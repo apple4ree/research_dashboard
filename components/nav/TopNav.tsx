@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { MarkGithubIcon, SearchIcon, PlusIcon, ChevronDownIcon } from '@primer/octicons-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
