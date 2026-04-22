@@ -21,14 +21,16 @@ export function TabBar({ slug }: { slug: string }) {
       <ul className="flex gap-1">
         {TABS.map(t => {
           const href = base + t.href;
-          const active = t.key === 'overview' ? pathname === base : pathname.startsWith(href);
+          const active = t.key === 'overview'
+            ? pathname === base
+            : pathname === href || pathname.startsWith(href + '/');
           return (
             <li key={t.key}>
               <Link
                 href={href}
                 className={cn(
                   'inline-flex items-center gap-2 px-3 h-10 text-sm border-b-2',
-                  active ? 'border-[#fd8c73] font-semibold' : 'border-transparent text-fg-muted hover:text-fg-default'
+                  active ? 'border-attention-emphasis font-semibold' : 'border-transparent text-fg-muted hover:text-fg-default'
                 )}
               >
                 <t.Icon size={14} />

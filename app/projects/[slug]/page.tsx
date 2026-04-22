@@ -1,21 +1,18 @@
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { LinkExternalIcon, TagIcon } from '@primer/octicons-react';
 import { MarkdownBody } from '@/components/md/MarkdownBody';
 import { Avatar } from '@/components/people/Avatar';
-import {
-  getProjectBySlug, getPapersByProject, getReleasesByProject, getMembersByProject,
-} from '@/lib/mock';
+import { getPapersByProject, getReleasesByProject, getMembersByProject } from '@/lib/mock';
+import { loadProject } from '@/lib/mock/loaders';
 
 export default async function ProjectOverview({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project) notFound();
+  const { slug, project } = await loadProject(params);
 
   const pinnedPaper = getPapersByProject(slug)[0];
   const latestRelease = getReleasesByProject(slug).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))[0];
   const members = getMembersByProject(slug);
 
+  // TODO: Replace hardcoded template with per-project README (add `readmeMarkdown?: string` to Project, or fetch from linked GitHub repo). Fine for MVP.
   const readme = `# ${project.name}\n\n${project.description}\n\n## Goals\n\n- TBD goals section (placeholder for lab README content).\n\n## How to run\n\n\`\`\`bash\n# example\npython scripts/run_eval.py --model claude-opus-4-7\n\`\`\`\n`;
 
   return (

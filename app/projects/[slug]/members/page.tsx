@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { Avatar } from '@/components/people/Avatar';
 import { LabelChip } from '@/components/badges/LabelChip';
-import { getProjectBySlug, getMembersByProject } from '@/lib/mock';
+import { getMembersByProject } from '@/lib/mock';
+import { loadProject } from '@/lib/mock/loaders';
 
 export default async function MembersTab({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  if (!getProjectBySlug(slug)) notFound();
+  const { slug } = await loadProject(params);
   const members = getMembersByProject(slug);
 
   return (

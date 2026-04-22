@@ -15,3 +15,12 @@ test('unknown project returns 404', async ({ page }) => {
   const res = await page.goto('/projects/does-not-exist');
   expect(res?.status()).toBe(404);
 });
+
+for (const tab of ['papers', 'data', 'members']) {
+  test(`project detail ${tab} tab loads for valid slug and 404s for unknown`, async ({ page }) => {
+    const ok = await page.goto(`/projects/reasoning-bench-v2/${tab}`);
+    expect(ok?.status()).toBe(200);
+    const bad = await page.goto(`/projects/does-not-exist/${tab}`);
+    expect(bad?.status()).toBe(404);
+  });
+}

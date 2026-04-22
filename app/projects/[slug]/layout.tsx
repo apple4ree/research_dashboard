@@ -1,7 +1,6 @@
-import { notFound } from 'next/navigation';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { TabBar } from '@/components/project/TabBar';
-import { getProjectBySlug } from '@/lib/mock';
+import { loadProject } from '@/lib/mock/loaders';
 
 export default async function ProjectLayout({
   children,
@@ -10,9 +9,7 @@ export default async function ProjectLayout({
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project) notFound();
+  const { slug, project } = await loadProject(params);
 
   return (
     <div className="space-y-4">

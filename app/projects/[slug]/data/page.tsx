@@ -1,16 +1,15 @@
-import { notFound } from 'next/navigation';
 import type { ReleaseKind } from '@/lib/types';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { EmptyState } from '@/components/misc/EmptyState';
-import { getProjectBySlug, getReleasesByProject } from '@/lib/mock';
+import { getReleasesByProject } from '@/lib/mock';
+import { loadProject } from '@/lib/mock/loaders';
 
 const KIND_TONE: Record<ReleaseKind, 'neutral' | 'accent' | 'done' | 'success'> = {
   dataset: 'accent', tool: 'neutral', skill: 'done', model: 'success',
 };
 
 export default async function DataTab({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  if (!getProjectBySlug(slug)) notFound();
+  const { slug } = await loadProject(params);
   const releases = getReleasesByProject(slug).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   if (releases.length === 0) return <EmptyState title="No releases" body="Datasets, tools, and Claude Code skills released by this project show here." />;
 
