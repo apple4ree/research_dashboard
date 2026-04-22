@@ -1,0 +1,187 @@
+// This is your Prisma schema file.
+// Mirrors lib/types.ts with extensibility columns for future external-source sync.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ========== Members ==========
+model Member {
+  login              String    @id
+  displayName        String
+  role               String
+  avatarUrl          String?
+  bio                String?
+  pinnedProjectSlugs String    // JSON array stored as string
+  source             String    @default("internal")
+  externalId         String?   @unique
+  lastSyncedAt       DateTime?
+
+  authoredPapers      PaperAuthor[]
+  memberProjects      ProjectMember[]
+  triggeredRuns       ExperimentRun[]
+  authoredDiscussions Discussion[]
+  authoredReplies     Reply[]
+  authoredEvents      ActivityEvent[]
+}
+
+// ========== Projects ==========
+model Project {
+  slug         String    @id
+  name         String
+  description  String
+  tags         String    // JSON array
+  pinned       Boolean
+  createdAt    DateTime
+  updatedAt    DateTime
+  source       String    @default("internal")
+  externalId   String?   @unique
+  lastSyncedAt DateTime?
+
+  repos    ProjectRepo[]
+  members  ProjectMember[]
+  papers   Paper[]
+  releases Release[]
+  runs     ExperimentRun[]
+  events   ActivityEvent[]
+}
+
+model ProjectMember {
+  projectSlug String
+  memberLogin String
+  project     Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  member      Member  @relation(fields: [memberLogin], references: [login], onDelete: Cascade)
+
+  @@id([projectSlug, memberLogin])
+}
+
+model ProjectRepo {
+  id          Int     @id @default(autoincrement())
+  projectSlug String
+  label       String
+  url         String
+  project     Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+}
+
+// ========== Papers ==========
+model Paper {
+  id           String    @id
+  title        String
+  projectSlug  String
+  stage        String
+  venue        String?
+  deadline     DateTime?
+  draftUrl     String?
+  pdfUrl       String?
+  source       String    @default("internal")
+  externalId   String?   @unique
+  lastSyncedAt DateTime?
+
+  project Project       @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  authors PaperAuthor[]
+}
+
+model PaperAuthor {
+  paperId     String
+  authorLogin String
+  position    Int
+  paper       Paper  @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  author      Member @relation(fields: [authorLogin], references: [login], onDelete: Cascade)
+
+  @@id([paperId, authorLogin])
+}
+
+// ========== Experiment Runs ==========
+model ExperimentRun {
+  id               String    @id
+  name             String
+  projectSlug      String
+  status           String
+  startedAt        DateTime
+  durationSec      Int?
+  triggeredByLogin String
+  summary          String?
+  stepsJson        String?
+  source           String    @default("internal")
+  externalId       String?   @unique
+  lastSyncedAt     DateTime?
+
+  project     Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  triggeredBy Member  @relation(fields: [triggeredByLogin], references: [login], onDelete: Restrict)
+}
+
+// ========== Discussions ==========
+model Discussion {
+  id             String    @id
+  category       String
+  title          String
+  authorLogin    String
+  createdAt      DateTime
+  lastActivityAt DateTime
+  replyCount     Int
+  bodyMarkdown   String
+  source         String    @default("internal")
+  externalId     String?   @unique
+  lastSyncedAt   DateTime?
+
+  author  Member  @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+  replies Reply[]
+}
+
+model Reply {
+  id           String    @id @default(uuid())
+  discussionId String
+  authorLogin  String
+  createdAt    DateTime
+  bodyMarkdown String
+  position     Int
+  source       String    @default("internal")
+  externalId   String?   @unique
+  lastSyncedAt DateTime?
+
+  discussion Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  author     Member     @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+}
+
+// ========== Releases ==========
+model Release {
+  id           String    @id
+  name         String
+  kind         String
+  projectSlug  String
+  version      String
+  publishedAt  DateTime
+  description  String?
+  downloadUrl  String?
+  source       String    @default("internal")
+  externalId   String?   @unique
+  lastSyncedAt DateTime?
+
+  project Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+}
+
+// ========== Activity events ==========
+model ActivityEvent {
+  id          String   @id
+  type        String
+  actorLogin  String
+  projectSlug String?
+  payload     String
+  createdAt   DateTime
+
+  actor   Member   @relation(fields: [actorLogin], references: [login], onDelete: Restrict)
+  project Project? @relation(fields: [projectSlug], references: [slug], onDelete: SetNull)
+}
+
+// ========== Venues ==========
+model Venue {
+  id       String   @id
+  name     String
+  deadline DateTime
+  kind     String
+}
