@@ -18,7 +18,7 @@ export default async function RunDetail({ params }: { params: Promise<{ id: stri
         <h1 className="text-lg font-semibold">{run.name}</h1>
         <div className="ml-auto text-xs text-fg-muted flex items-center gap-3">
           <span className="flex items-center gap-1"><Avatar login={run.triggeredByLogin} size={14}/> {actor?.displayName}</span>
-          <span>{new Date(run.startedAt).toLocaleString()}</span>
+          <span>{new Date(run.startedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</span>
         </div>
       </div>
       {proj && (

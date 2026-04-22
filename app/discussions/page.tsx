@@ -14,12 +14,20 @@ export default function DiscussionsIndex() {
       <aside className="bg-white border border-border-default rounded-md p-3 h-fit">
         <h3 className="text-xs uppercase tracking-wide text-fg-muted font-semibold mb-2">Categories</h3>
         <ul className="space-y-1 text-sm">
-          {DISCUSSION_CATEGORY_ORDER.map(id => {
-            const count = discussions.filter(d => d.category === id).length;
+          {DISCUSSION_CATEGORY_ORDER.map(cat => {
+            const count = discussions.filter(d => d.category === cat).length;
             return (
-              <li key={id} className="flex items-center justify-between px-2 py-1 rounded hover:bg-canvas-subtle">
-                <span>{DISCUSSION_CATEGORY_ICONS[id]} {DISCUSSION_CATEGORY_LABELS[id]}</span>
-                <span className="text-xs text-fg-muted">{count}</span>
+              <li key={cat}>
+                <button
+                  type="button"
+                  disabled
+                  aria-label={`Filter by ${DISCUSSION_CATEGORY_LABELS[cat]} (coming soon)`}
+                  title="Coming soon"
+                  className="w-full flex items-center justify-between px-2 py-1 rounded text-left disabled:opacity-80 disabled:cursor-not-allowed"
+                >
+                  <span>{DISCUSSION_CATEGORY_ICONS[cat]} {DISCUSSION_CATEGORY_LABELS[cat]}</span>
+                  <span className="text-xs text-fg-muted">{count}</span>
+                </button>
               </li>
             );
           })}
