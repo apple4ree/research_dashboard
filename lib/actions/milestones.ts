@@ -6,10 +6,13 @@ import type { MilestoneStatus } from '@/lib/types';
 
 const STATUSES: readonly MilestoneStatus[] = ['past', 'now', 'future'];
 
+export type CreateMilestoneState = { error?: string } | null;
+
 export async function createMilestoneAction(
   projectSlug: string,
+  _prev: CreateMilestoneState,
   formData: FormData,
-): Promise<void> {
+): Promise<CreateMilestoneState> {
   const dateStr = String(formData.get('date') ?? '').trim();
   const label = String(formData.get('label') ?? '').trim();
   const noteRaw = String(formData.get('note') ?? '').trim();
@@ -17,12 +20,12 @@ export async function createMilestoneAction(
   const status = String(formData.get('status') ?? '') as MilestoneStatus;
   const positionRaw = String(formData.get('position') ?? '').trim();
 
-  if (!dateStr) throw new Error('Date is required');
-  if (!label) throw new Error('Label is required');
-  if (!STATUSES.includes(status)) throw new Error(`Invalid status "${status}"`);
+  if (!dateStr) return { error: 'Date is required.' };
+  if (!label) return { error: 'Label is required.' };
+  if (!STATUSES.includes(status)) return { error: `Invalid status "${status}".` };
 
   const parsedDate = new Date(dateStr);
-  if (Number.isNaN(parsedDate.getTime())) throw new Error(`Invalid date "${dateStr}"`);
+  if (Number.isNaN(parsedDate.getTime())) return { error: `Invalid date "${dateStr}".` };
 
   let position: number;
   if (positionRaw === '') {
@@ -35,7 +38,7 @@ export async function createMilestoneAction(
   } else {
     const parsed = Number.parseInt(positionRaw, 10);
     if (Number.isNaN(parsed) || parsed < 0) {
-      throw new Error(`Invalid position "${positionRaw}"`);
+      return { error: `Invalid position "${positionRaw}".` };
     }
     position = parsed;
   }
@@ -44,6 +47,7 @@ export async function createMilestoneAction(
     data: { projectSlug, date: parsedDate, label, note, status, position },
   });
   revalidatePath(`/projects/${projectSlug}`);
+  return null;
 }
 
 export async function updateMilestoneAction(
