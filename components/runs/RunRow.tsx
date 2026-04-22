@@ -6,7 +6,7 @@ import { getProjectBySlug, getMemberByLogin } from '@/lib/mock';
 import { relTime } from '@/lib/time';
 
 function fmtDuration(sec?: number) {
-  if (!sec) return '—';
+  if (sec == null) return '—';
   if (sec < 60) return `${sec}s`;
   if (sec < 3600) return `${Math.round(sec/60)}m`;
   const h = Math.floor(sec/3600); const m = Math.round((sec%3600)/60);
