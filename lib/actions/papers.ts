@@ -17,7 +17,13 @@ export async function updatePaperStage(paperId: string, stage: PaperStage): Prom
   revalidatePath('/projects');
 }
 
-export async function createPaper(projectSlug: string, formData: FormData): Promise<void> {
+export type CreatePaperState = { error?: string } | null;
+
+export async function createPaper(
+  projectSlug: string,
+  _prev: CreatePaperState,
+  formData: FormData,
+): Promise<CreatePaperState> {
   const title = String(formData.get('title') ?? '').trim();
   const stage = String(formData.get('stage') ?? '') as PaperStage;
   const venue = String(formData.get('venue') ?? '').trim() || null;
@@ -25,14 +31,14 @@ export async function createPaper(projectSlug: string, formData: FormData): Prom
   const authorsRaw = formData.getAll('authors');
   const draftUrl = String(formData.get('draftUrl') ?? '').trim() || null;
 
-  if (!title) throw new Error('Title is required');
-  if (!PAPER_STAGE_ORDER.includes(stage)) throw new Error(`Invalid stage "${stage}"`);
+  if (!title) return { error: 'Title is required.' };
+  if (!PAPER_STAGE_ORDER.includes(stage)) return { error: `Invalid stage "${stage}".` };
 
   const project = await prisma.project.findUnique({ where: { slug: projectSlug } });
-  if (!project) throw new Error(`Project "${projectSlug}" not found`);
+  if (!project) return { error: `Project "${projectSlug}" not found.` };
 
   const authors = authorsRaw.map(String).filter(Boolean);
-  if (authors.length === 0) throw new Error('At least one author is required');
+  if (authors.length === 0) return { error: 'At least one author is required.' };
 
   const deadline = deadlineStr ? new Date(deadlineStr) : null;
 
