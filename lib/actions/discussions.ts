@@ -71,3 +71,29 @@ export async function createReply(discussionId: string, formData: FormData): Pro
   revalidatePath('/discussions');
   revalidatePath('/');
 }
+
+export async function deleteDiscussionAction(discussionId: string): Promise<void> {
+  const existing = await prisma.discussion.findUnique({ where: { id: discussionId } });
+  if (!existing) {
+    redirect('/discussions');
+  }
+  await prisma.discussion.delete({ where: { id: discussionId } });
+  revalidatePath('/discussions');
+  revalidatePath('/');
+  redirect('/discussions');
+}
+
+export async function deleteReplyAction(discussionId: string, replyId: string): Promise<void> {
+  const reply = await prisma.reply.findUnique({ where: { id: replyId } });
+  if (!reply || reply.discussionId !== discussionId) return;
+  await prisma.$transaction([
+    prisma.reply.delete({ where: { id: replyId } }),
+    prisma.discussion.update({
+      where: { id: discussionId },
+      data: { replyCount: { decrement: 1 } },
+    }),
+  ]);
+  revalidatePath(`/discussions/${discussionId}`);
+  revalidatePath('/discussions');
+  revalidatePath('/');
+}

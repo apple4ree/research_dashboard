@@ -151,7 +151,7 @@ type DiscussionRow = {
   lastActivityAt: Date;
   replyCount: number;
   bodyMarkdown: string;
-  replies?: { authorLogin: string; createdAt: Date; bodyMarkdown: string; position: number }[];
+  replies?: { id: string; authorLogin: string; createdAt: Date; bodyMarkdown: string; position: number }[];
 };
 
 function mapDiscussion(row: DiscussionRow): Discussion {
@@ -166,6 +166,7 @@ function mapDiscussion(row: DiscussionRow): Discussion {
     replyCount: row.replyCount,
     bodyMarkdown: row.bodyMarkdown,
     replies: sortedReplies.map(r => ({
+      id: r.id,
       authorLogin: r.authorLogin,
       createdAt: r.createdAt.toISOString(),
       bodyMarkdown: r.bodyMarkdown,

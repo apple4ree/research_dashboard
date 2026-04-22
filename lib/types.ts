@@ -64,7 +64,7 @@ export interface Discussion {
   lastActivityAt: string;
   replyCount: number;
   bodyMarkdown: string;
-  replies: { authorLogin: UserLogin; createdAt: string; bodyMarkdown: string }[];
+  replies: { id: string; authorLogin: UserLogin; createdAt: string; bodyMarkdown: string }[];
 }
 
 export interface Release {
