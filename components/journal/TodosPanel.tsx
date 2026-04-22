@@ -59,8 +59,9 @@ export function TodosPanel({
   };
 
   useEffect(() => {
+    const timers = errorTimersRef.current;
     return () => {
-      for (const t of Object.values(errorTimersRef.current)) {
+      for (const t of Object.values(timers)) {
         if (t) clearTimeout(t);
       }
     };
