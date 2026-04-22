@@ -72,3 +72,47 @@ export async function createProject(
   revalidatePath('/projects');
   redirect(`/projects/${slug}`);
 }
+
+export type UpdateProjectState = { error?: string } | null;
+
+export async function updateProjectAction(
+  slug: string,
+  _prev: UpdateProjectState,
+  formData: FormData,
+): Promise<UpdateProjectState> {
+  const existing = await prisma.project.findUnique({ where: { slug } });
+  if (!existing) return { error: `Project "${slug}" not found.` };
+
+  const name = String(formData.get('name') ?? '').trim();
+  const description = String(formData.get('description') ?? '').trim();
+  const tagsRaw = String(formData.get('tags') ?? '');
+  const pinned = formData.get('pinned') === 'on';
+
+  if (!name) return { error: 'Name is required.' };
+  if (!description) return { error: 'Description is required.' };
+
+  const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+
+  await prisma.project.update({
+    where: { slug },
+    data: {
+      name,
+      description,
+      tags: JSON.stringify(tags),
+      pinned,
+      updatedAt: new Date(),
+    },
+  });
+
+  revalidatePath('/');
+  revalidatePath('/projects');
+  revalidatePath(`/projects/${slug}`);
+  redirect(`/projects/${slug}`);
+}
+
+export async function deleteProjectAction(slug: string): Promise<void> {
+  await prisma.project.delete({ where: { slug } });
+  revalidatePath('/');
+  revalidatePath('/projects');
+  redirect('/projects');
+}
