@@ -2,7 +2,7 @@ import type { Config } from 'tailwindcss';
 import { colors } from './lib/theme/tokens';
 
 export default {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
