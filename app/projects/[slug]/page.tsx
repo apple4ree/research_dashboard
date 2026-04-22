@@ -7,7 +7,7 @@ import {
   getRunsByProject,
 } from '@/lib/queries';
 import { KpiBar } from '@/components/journal/KpiBar';
-import { Timeline } from '@/components/journal/Timeline';
+import { TimelinePanel } from '@/components/journal/TimelinePanel';
 import { TodosPanel } from '@/components/journal/TodosPanel';
 import { JournalView } from '@/components/journal/JournalView';
 import { EmptyState } from '@/components/misc/EmptyState';
@@ -48,8 +48,8 @@ export default async function ProjectOverview({
 
       {hasJournal ? (
         <>
-          <Timeline milestones={milestones} />
-          <TodosPanel todos={todos} />
+          <TimelinePanel milestones={milestones} projectSlug={slug} />
+          <TodosPanel todos={todos} projectSlug={slug} />
           <JournalView entries={entries} />
         </>
       ) : (
