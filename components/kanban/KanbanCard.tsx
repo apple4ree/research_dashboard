@@ -6,14 +6,9 @@ import type { Paper } from '@/lib/types';
 import { AvatarStack } from '@/components/people/AvatarStack';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { getProjectBySlug } from '@/lib/mock';
+import { relDeadline } from '@/lib/time';
 
-function daysUntil(iso?: string, now = Date.now()) {
-  if (!iso) return null;
-  const d = Math.ceil((new Date(iso).getTime() - now) / 86_400_000);
-  return d >= 0 ? `in ${d}d` : `${-d}d ago`;
-}
-
-export function KanbanCard({ paper }: { paper: Paper }) {
+export function KanbanCard({ paper, now }: { paper: Paper; now: number }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: paper.id });
   const proj = getProjectBySlug(paper.projectSlug);
   return (
@@ -26,7 +21,7 @@ export function KanbanCard({ paper }: { paper: Paper }) {
       <div className="font-medium text-sm leading-tight">{paper.title}</div>
       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
         {paper.venue ? <LabelChip tone="accent">{paper.venue}</LabelChip> : <span />}
-        {paper.deadline && <span className="text-fg-muted">{daysUntil(paper.deadline)}</span>}
+        {paper.deadline && <span className="text-fg-muted">{relDeadline(paper.deadline, now)}</span>}
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
         <AvatarStack logins={paper.authorLogins} size={18} />

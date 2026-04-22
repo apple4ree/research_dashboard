@@ -11,3 +11,8 @@ export function relTime(iso: string, now: number): string {
 export function daysUntil(iso: string, now: number): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 86_400_000));
 }
+
+export function relDeadline(iso: string, now: number): string {
+  const d = Math.ceil((new Date(iso).getTime() - now) / 86_400_000);
+  return d >= 0 ? `in ${d}d` : `${-d}d ago`;
+}
