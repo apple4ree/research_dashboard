@@ -10,6 +10,12 @@ import { discussions } from '../lib/mock/discussions';
 import { releases } from '../lib/mock/releases';
 import { events } from '../lib/mock/events';
 import { venues } from '../lib/mock/venues';
+import {
+  JOURNAL_PROJECT_SLUG,
+  journalEntries,
+  journalMilestones,
+  journalTodos,
+} from '../lib/mock/journal';
 
 function resolveDatabaseUrl(): string {
   // Prisma 7 resolves `file:./path` relative to cwd.
@@ -31,6 +37,11 @@ async function main() {
   await prisma.paperAuthor.deleteMany();
   await prisma.paper.deleteMany();
   await prisma.release.deleteMany();
+  await prisma.entryArtifact.deleteMany();
+  await prisma.entrySlide.deleteMany();
+  await prisma.researchEntry.deleteMany();
+  await prisma.milestone.deleteMany();
+  await prisma.todoItem.deleteMany();
   await prisma.projectRepo.deleteMany();
   await prisma.projectMember.deleteMany();
   await prisma.project.deleteMany();
@@ -73,6 +84,95 @@ async function main() {
             url: r.url,
           })),
         },
+      },
+    });
+  }
+
+  // LLDM Unlearning — dedicated journal project
+  await prisma.project.create({
+    data: {
+      slug: JOURNAL_PROJECT_SLUG,
+      name: 'LLDM Unlearning',
+      description: 'Diffusion LLM에서 특정 지식을 제거하는 연구 — 2025 Fall 부터 진행 중',
+      tags: JSON.stringify(['LLM', 'unlearning', 'diffusion', 'safety']),
+      pinned: true,
+      createdAt: new Date('2025-11-01T00:00:00Z'),
+      updatedAt: new Date('2026-04-21T00:00:00Z'),
+      members: {
+        create: [
+          { member: { connect: { login: 'sooyoung' } } },
+          { member: { connect: { login: 'jihoon' } } },
+          { member: { connect: { login: 'yeji' } } },
+          { member: { connect: { login: 'sungmin' } } },
+        ],
+      },
+      repos: {
+        create: [
+          { label: 'GitHub', url: 'https://github.com/example/lldm-unlearning' },
+        ],
+      },
+    },
+  });
+
+  // Journal entries (+ nested slides + artifacts)
+  for (const e of journalEntries) {
+    await prisma.researchEntry.create({
+      data: {
+        id: e.id,
+        projectSlug: e.projectSlug,
+        date: new Date(e.date),
+        type: e.type,
+        authorLogin: e.authorLogin,
+        title: e.title,
+        summary: e.summary,
+        tags: JSON.stringify(e.tags),
+        bodyMarkdown: e.bodyMarkdown,
+        artifacts: {
+          create: e.artifacts.map((a, i) => ({
+            type: a.type,
+            title: a.title,
+            href: a.href,
+            position: i,
+          })),
+        },
+        slides: {
+          create: e.slides.map((s, i) => ({
+            position: i,
+            kind: s.kind,
+            title: s.title,
+            body: s.body,
+            chip: s.chip ?? null,
+            metricsJson: s.metrics ? JSON.stringify(s.metrics) : null,
+            code: s.code ?? null,
+          })),
+        },
+      },
+    });
+  }
+
+  // Milestones
+  for (const m of journalMilestones) {
+    await prisma.milestone.create({
+      data: {
+        projectSlug: JOURNAL_PROJECT_SLUG,
+        date: new Date(m.date),
+        label: m.label,
+        note: m.note ?? null,
+        status: m.status,
+        position: m.position,
+      },
+    });
+  }
+
+  // Todos
+  for (const t of journalTodos) {
+    await prisma.todoItem.create({
+      data: {
+        projectSlug: JOURNAL_PROJECT_SLUG,
+        bucket: t.bucket,
+        text: t.text,
+        done: t.done,
+        position: t.position,
       },
     });
   }
@@ -192,6 +292,11 @@ async function main() {
     releases: await prisma.release.count(),
     events: await prisma.activityEvent.count(),
     venues: await prisma.venue.count(),
+    researchEntries: await prisma.researchEntry.count(),
+    entrySlides: await prisma.entrySlide.count(),
+    entryArtifacts: await prisma.entryArtifact.count(),
+    milestones: await prisma.milestone.count(),
+    todos: await prisma.todoItem.count(),
   };
   console.log('Seeded:', counts);
 }
