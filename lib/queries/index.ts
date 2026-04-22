@@ -17,6 +17,17 @@ import type {
   ReleaseKind,
   VenueKind,
   EventType,
+  ResearchEntry,
+  EntryType,
+  EntrySlide,
+  EntryArtifact,
+  ArtifactType,
+  SlideKind,
+  EntryMetric,
+  Milestone,
+  MilestoneStatus,
+  TodoItem,
+  TodoBucket,
 } from '@/lib/types';
 
 export { CURRENT_USER } from './constants';
@@ -359,4 +370,149 @@ export async function getAllEvents(): Promise<ActivityEvent[]> {
 export async function getAllVenues(): Promise<Venue[]> {
   const rows = await prisma.venue.findMany();
   return rows.map(mapVenue);
+}
+
+// ============================================================================
+// Research Journal
+// ============================================================================
+
+type EntryArtifactRow = {
+  type: string;
+  title: string;
+  href: string;
+  position: number;
+};
+
+type EntrySlideRow = {
+  position: number;
+  kind: string;
+  title: string;
+  body: string;
+  chip: string | null;
+  metricsJson: string | null;
+  code: string | null;
+};
+
+type ResearchEntryRow = {
+  id: string;
+  projectSlug: string;
+  date: Date;
+  type: string;
+  authorLogin: string;
+  title: string;
+  summary: string;
+  tags: string;
+  bodyMarkdown: string;
+  artifacts?: EntryArtifactRow[];
+  slides?: EntrySlideRow[];
+};
+
+function mapArtifact(row: EntryArtifactRow): EntryArtifact {
+  return {
+    type: row.type as ArtifactType,
+    title: row.title,
+    href: row.href,
+  };
+}
+
+function mapSlide(row: EntrySlideRow): EntrySlide {
+  const slide: EntrySlide = {
+    kind: row.kind as SlideKind,
+    title: row.title,
+    body: row.body,
+  };
+  if (row.chip != null) slide.chip = row.chip;
+  if (row.metricsJson != null) slide.metrics = JSON.parse(row.metricsJson) as EntryMetric[];
+  if (row.code != null) slide.code = row.code;
+  return slide;
+}
+
+function mapEntry(row: ResearchEntryRow): ResearchEntry {
+  const sortedArtifacts = [...(row.artifacts ?? [])].sort((a, b) => a.position - b.position);
+  const sortedSlides = [...(row.slides ?? [])].sort((a, b) => a.position - b.position);
+  return {
+    id: row.id,
+    projectSlug: row.projectSlug,
+    date: row.date.toISOString(),
+    type: row.type as EntryType,
+    authorLogin: row.authorLogin,
+    title: row.title,
+    summary: row.summary,
+    tags: JSON.parse(row.tags) as string[],
+    bodyMarkdown: row.bodyMarkdown,
+    artifacts: sortedArtifacts.map(mapArtifact),
+    slides: sortedSlides.map(mapSlide),
+  };
+}
+
+type MilestoneRow = {
+  id: number;
+  date: Date;
+  label: string;
+  note: string | null;
+  status: string;
+  position: number;
+};
+
+function mapMilestone(row: MilestoneRow): Milestone {
+  const m: Milestone = {
+    id: row.id,
+    date: row.date.toISOString(),
+    label: row.label,
+    status: row.status as MilestoneStatus,
+    position: row.position,
+  };
+  if (row.note != null) m.note = row.note;
+  return m;
+}
+
+type TodoItemRow = {
+  id: number;
+  bucket: string;
+  text: string;
+  done: boolean;
+  position: number;
+};
+
+function mapTodo(row: TodoItemRow): TodoItem {
+  return {
+    id: row.id,
+    bucket: row.bucket as TodoBucket,
+    text: row.text,
+    done: row.done,
+    position: row.position,
+  };
+}
+
+export async function getEntriesByProject(slug: Slug): Promise<ResearchEntry[]> {
+  const rows = await prisma.researchEntry.findMany({
+    where: { projectSlug: slug },
+    include: { artifacts: true, slides: true },
+    orderBy: { date: 'desc' },
+  });
+  return rows.map(mapEntry);
+}
+
+export async function getEntryById(id: string): Promise<ResearchEntry | undefined> {
+  const row = await prisma.researchEntry.findUnique({
+    where: { id },
+    include: { artifacts: true, slides: true },
+  });
+  return row ? mapEntry(row) : undefined;
+}
+
+export async function getMilestonesByProject(slug: Slug): Promise<Milestone[]> {
+  const rows = await prisma.milestone.findMany({
+    where: { projectSlug: slug },
+    orderBy: { position: 'asc' },
+  });
+  return rows.map(mapMilestone);
+}
+
+export async function getTodosByProject(slug: Slug): Promise<TodoItem[]> {
+  const rows = await prisma.todoItem.findMany({
+    where: { projectSlug: slug },
+    orderBy: [{ bucket: 'asc' }, { position: 'asc' }],
+  });
+  return rows.map(mapTodo);
 }

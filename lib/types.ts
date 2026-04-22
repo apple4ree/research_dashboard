@@ -121,3 +121,62 @@ export interface Venue {
   deadline: string;
   kind: VenueKind;
 }
+
+// ========== Research Journal ==========
+
+export type EntryType = 'meeting' | 'report' | 'experiment' | 'review';
+export type SlideKind = 'discovery' | 'failure' | 'implement' | 'question' | 'next' | 'metric';
+export type ArtifactType = 'notebook' | 'figure' | 'sheet' | 'csv' | 'doc' | 'slide';
+export type MilestoneStatus = 'past' | 'now' | 'future';
+export type TodoBucket = 'short' | 'mid' | 'long';
+
+export interface EntryArtifact {
+  type: ArtifactType;
+  title: string;
+  href: string;
+}
+
+export interface EntryMetric {
+  b: string;
+  s: string;
+}
+
+export interface EntrySlide {
+  kind: SlideKind;
+  title: string;
+  body: string;
+  chip?: string;
+  metrics?: EntryMetric[];
+  code?: string;
+}
+
+export interface ResearchEntry {
+  id: string;
+  projectSlug: Slug;
+  date: string; // ISO
+  type: EntryType;
+  authorLogin: UserLogin;
+  title: string;
+  summary: string;
+  tags: string[];
+  bodyMarkdown: string;
+  artifacts: EntryArtifact[];
+  slides: EntrySlide[];
+}
+
+export interface Milestone {
+  id: number;
+  date: string;
+  label: string;
+  note?: string;
+  status: MilestoneStatus;
+  position: number;
+}
+
+export interface TodoItem {
+  id: number;
+  bucket: TodoBucket;
+  text: string;
+  done: boolean;
+  position: number;
+}
