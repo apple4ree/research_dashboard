@@ -9,4 +9,5 @@ export const releases: Release[] = [
   { id: 'r-006', name: 'KoLogicQA-eval', kind: 'tool', projectSlug: 'KoLogicQA', version: 'v0.3.0', publishedAt: '2026-04-05T00:00:00Z', description: 'Evaluation harness for KoLogicQA.' },
   { id: 'r-007', name: 'agentic-tool-eval', kind: 'tool', projectSlug: 'agentic-tool-use', version: 'v0.1.0', publishedAt: '2026-04-18T00:00:00Z', description: 'Framework for evaluating agentic tool selection.' },
   { id: 'r-008', name: 'reasoning-probe-kit', kind: 'skill', projectSlug: 'claude-skill-suite', version: 'v0.1.0', publishedAt: '2026-04-19T00:00:00Z', description: 'Claude Code skill for interactive model reasoning probes.' },
+  { id: 'r-009', name: 'reasoning-instruct-7b', kind: 'model', projectSlug: 'reasoning-bench-v2', version: 'v0.1.0', publishedAt: '2026-04-08T00:00:00Z', description: 'Instruction-tuned 7B model fine-tuned on reasoning-bench-v2 rationales.' },
 ];

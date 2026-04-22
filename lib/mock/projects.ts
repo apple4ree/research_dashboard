@@ -12,7 +12,7 @@ export const projects: Project[] = [
     memberLogins: ['sooyoung', 'jihoon', 'junho'],
     repos: [{ label: 'GitHub', url: 'https://github.com/example/reasoning-bench-v2' }],
     paperIds: ['p-001', 'p-002'],
-    releaseIds: ['r-001'],
+    releaseIds: ['r-001', 'r-009'],
   },
   {
     slug: 'claude-skill-suite',

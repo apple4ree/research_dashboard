@@ -6,7 +6,6 @@ export type RunStatus = 'success' | 'failure' | 'in_progress' | 'queued' | 'canc
 export type MemberRole = 'PI' | 'Postdoc' | 'PhD' | 'MS' | 'Intern' | 'Alumni';
 export type DiscussionCategory = 'announcements' | 'journal_club' | 'qa' | 'ideas';
 export type ReleaseKind = 'dataset' | 'tool' | 'skill' | 'model';
-export type EventType = 'paper' | 'experiment' | 'release' | 'discussion' | 'project';
 export type VenueKind = 'abstract' | 'full' | 'camera_ready' | 'rebuttal';
 
 export interface Project {
@@ -79,14 +78,42 @@ export interface Release {
   downloadUrl?: string;
 }
 
-export interface ActivityEvent {
+interface BaseEvent {
   id: string;
-  type: EventType;
   actorLogin: UserLogin;
   projectSlug?: Slug;
-  payload: Record<string, unknown>;
   createdAt: string;
 }
+
+export type PaperEventAction = 'created' | 'uploaded_draft' | 'published';
+export type ExperimentEventAction = 'started' | 'succeeded' | 'failed' | 'cancelled';
+export type ReleaseEventAction = 'published';
+export type DiscussionEventAction = 'opened' | 'replied';
+export type ProjectEventAction = 'updated_readme' | 'created' | 'archived';
+
+export interface PaperEvent extends BaseEvent {
+  type: 'paper';
+  payload: { paperId: string; action: PaperEventAction; version?: number };
+}
+export interface ExperimentEvent extends BaseEvent {
+  type: 'experiment';
+  payload: { runId: string; action: ExperimentEventAction };
+}
+export interface ReleaseEvent extends BaseEvent {
+  type: 'release';
+  payload: { releaseId: string; action: ReleaseEventAction };
+}
+export interface DiscussionEvent extends BaseEvent {
+  type: 'discussion';
+  payload: { discussionId: string; action: DiscussionEventAction };
+}
+export interface ProjectEvent extends BaseEvent {
+  type: 'project';
+  payload: { action: ProjectEventAction };
+}
+
+export type ActivityEvent = PaperEvent | ExperimentEvent | ReleaseEvent | DiscussionEvent | ProjectEvent;
+export type EventType = ActivityEvent['type'];
 
 export interface Venue {
   id: string;
