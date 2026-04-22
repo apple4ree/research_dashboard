@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
-import { ArrowLeftIcon } from '@primer/octicons-react';
-import { createDiscussion } from '@/lib/actions/discussions';
+import { useActionState } from 'react';
+import { ArrowLeftIcon, AlertIcon } from '@primer/octicons-react';
+import { createDiscussion, type CreateDiscussionState } from '@/lib/actions/discussions';
 import {
   DISCUSSION_CATEGORY_LABELS,
   DISCUSSION_CATEGORY_ICONS,
@@ -8,6 +11,11 @@ import {
 } from '@/lib/labels';
 
 export default function NewDiscussionPage() {
+  const [state, formAction, pending] = useActionState<CreateDiscussionState, FormData>(
+    createDiscussion,
+    null,
+  );
+
   return (
     <div className="max-w-3xl">
       <Link
@@ -17,7 +25,16 @@ export default function NewDiscussionPage() {
         <ArrowLeftIcon size={14} /> Back to discussions
       </Link>
       <h1 className="text-lg font-semibold mb-4">New discussion</h1>
-      <form action={createDiscussion} className="space-y-4 bg-white border border-border-default rounded-md p-6">
+      <form action={formAction} className="space-y-4 bg-white border border-border-default rounded-md p-6">
+        {state?.error && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 bg-danger-subtle border border-danger-subtle rounded-md p-3 text-sm text-danger-fg"
+          >
+            <AlertIcon size={16} className="mt-0.5 flex-shrink-0" />
+            <span>{state.error}</span>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="category">Category</label>
           <select
@@ -61,9 +78,10 @@ export default function NewDiscussionPage() {
         <div className="flex items-center gap-2 pt-2">
           <button
             type="submit"
-            className="px-3 h-8 rounded-md bg-success-emphasis text-white text-sm font-medium hover:bg-success-fg"
+            disabled={pending}
+            className="px-3 h-8 rounded-md bg-success-emphasis text-white text-sm font-medium hover:bg-success-fg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create discussion
+            {pending ? 'Creating…' : 'Create discussion'}
           </button>
           <Link
             href="/discussions"

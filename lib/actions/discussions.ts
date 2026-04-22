@@ -9,15 +9,20 @@ import type { DiscussionCategory } from '@/lib/types';
 
 const CATEGORY_VALUES: readonly DiscussionCategory[] = ['announcements', 'journal_club', 'qa', 'ideas'];
 
-export async function createDiscussion(formData: FormData): Promise<void> {
+export type CreateDiscussionState = { error?: string } | null;
+
+export async function createDiscussion(
+  _prev: CreateDiscussionState,
+  formData: FormData,
+): Promise<CreateDiscussionState> {
   const category = String(formData.get('category') ?? '');
   const title = String(formData.get('title') ?? '').trim();
   const body = String(formData.get('body') ?? '').trim();
 
-  if (!title) throw new Error('Title is required');
-  if (!body) throw new Error('Body is required');
+  if (!title) return { error: 'Title is required.' };
+  if (!body) return { error: 'Body is required.' };
   if (!CATEGORY_VALUES.includes(category as DiscussionCategory)) {
-    throw new Error(`Invalid category "${category}"`);
+    return { error: `Invalid category "${category}".` };
   }
 
   const id = `d-${randomUUID().slice(0, 8)}`;
@@ -41,12 +46,18 @@ export async function createDiscussion(formData: FormData): Promise<void> {
   redirect(`/discussions/${id}`);
 }
 
-export async function createReply(discussionId: string, formData: FormData): Promise<void> {
+export type CreateReplyState = { error?: string } | null;
+
+export async function createReply(
+  discussionId: string,
+  _prev: CreateReplyState,
+  formData: FormData,
+): Promise<CreateReplyState> {
   const body = String(formData.get('body') ?? '').trim();
-  if (!body) throw new Error('Reply cannot be empty');
+  if (!body) return { error: 'Reply cannot be empty.' };
 
   const discussion = await prisma.discussion.findUnique({ where: { id: discussionId } });
-  if (!discussion) throw new Error(`Discussion ${discussionId} not found`);
+  if (!discussion) return { error: `Discussion ${discussionId} not found.` };
 
   const now = new Date();
   const nextPosition = await prisma.reply.count({ where: { discussionId } });
@@ -70,6 +81,7 @@ export async function createReply(discussionId: string, formData: FormData): Pro
   revalidatePath(`/discussions/${discussionId}`);
   revalidatePath('/discussions');
   revalidatePath('/');
+  return null;
 }
 
 export async function deleteDiscussionAction(discussionId: string): Promise<void> {
