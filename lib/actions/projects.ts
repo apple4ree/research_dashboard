@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { CURRENT_USER } from '@/lib/queries/constants';
 
+export type CreateProjectState = { error?: string } | null;
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -17,31 +19,36 @@ function slugify(name: string): string {
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
-export async function createProject(formData: FormData): Promise<void> {
+export async function createProject(
+  _prevState: CreateProjectState,
+  formData: FormData,
+): Promise<CreateProjectState> {
   const name = String(formData.get('name') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
   const tagsRaw = String(formData.get('tags') ?? '');
   const pinned = formData.get('pinned') === 'on';
   const slugRaw = String(formData.get('slug') ?? '').trim().toLowerCase();
 
-  if (!name) throw new Error('Name is required');
-  if (!description) throw new Error('Description is required');
+  if (!name) return { error: 'Name is required.' };
+  if (!description) return { error: 'Description is required.' };
 
-  // Prefer explicit slug if provided; otherwise derive from name.
   const slug = slugRaw || slugify(name);
   if (!slug) {
-    throw new Error(
-      'Please fill the Slug field. The Name contains no ASCII letters or digits, so a URL slug could not be derived automatically. Example: "my-new-project".'
-    );
+    return {
+      error:
+        'Please fill the Slug field. The Name contains no ASCII letters or digits, so a URL slug could not be derived automatically. Example: "my-new-project".',
+    };
   }
   if (!SLUG_PATTERN.test(slug)) {
-    throw new Error(
-      `Slug "${slug}" is invalid. Use lowercase letters, digits, and hyphens only (e.g., "reasoning-bench-v3").`
-    );
+    return {
+      error: `Slug "${slug}" is invalid. Use lowercase English letters (a-z), digits (0-9), and hyphens only. Example: "reasoning-bench-v3".`,
+    };
   }
 
   const existing = await prisma.project.findUnique({ where: { slug } });
-  if (existing) throw new Error(`A project with slug "${slug}" already exists`);
+  if (existing) {
+    return { error: `A project with slug "${slug}" already exists. Pick a different slug.` };
+  }
 
   const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
   const now = new Date();
