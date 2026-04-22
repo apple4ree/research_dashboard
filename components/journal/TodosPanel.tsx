@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react';
-import { XIcon } from '@primer/octicons-react';
+import { AlertIcon, XIcon } from '@primer/octicons-react';
 import type { TodoItem, TodoBucket } from '@/lib/types';
 import { TODO_BUCKET_LABELS, TODO_BUCKET_ORDER } from '@/lib/labels';
 import { cn } from '@/lib/cn';
@@ -39,8 +39,32 @@ export function TodosPanel({
   const [items, setItems] = useState<Draft[]>(() => todos.map(t => ({ ...t })));
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editText, setEditText] = useState('');
+  const [bucketErrors, setBucketErrors] = useState<Partial<Record<TodoBucket, string>>>({});
   const [, startTransition] = useTransition();
   const editingRef = useRef<number | null>(null);
+  const errorTimersRef = useRef<Partial<Record<TodoBucket, ReturnType<typeof setTimeout>>>>({});
+
+  const showBucketError = (bucket: TodoBucket, message: string) => {
+    setBucketErrors(prev => ({ ...prev, [bucket]: message }));
+    const existing = errorTimersRef.current[bucket];
+    if (existing) clearTimeout(existing);
+    errorTimersRef.current[bucket] = setTimeout(() => {
+      setBucketErrors(prev => {
+        const next = { ...prev };
+        delete next[bucket];
+        return next;
+      });
+      delete errorTimersRef.current[bucket];
+    }, 3000);
+  };
+
+  useEffect(() => {
+    return () => {
+      for (const t of Object.values(errorTimersRef.current)) {
+        if (t) clearTimeout(t);
+      }
+    };
+  }, []);
 
   // Keep the ref in sync (effect runs after render, so no ref-in-render warning).
   useEffect(() => {
@@ -65,9 +89,13 @@ export function TodosPanel({
     startTransition(async () => {
       try {
         await toggleTodoAction(projectSlug, t.id, nextDone);
-      } catch {
+      } catch (err) {
         // rollback
         setItems(prev => prev.map(it => (it.id === t.id ? { ...it, done: t.done } : it)));
+        showBucketError(
+          t.bucket,
+          err instanceof Error ? err.message : 'Failed to update todo.',
+        );
       }
     });
   };
@@ -78,9 +106,13 @@ export function TodosPanel({
       try {
         await deleteTodoAction(projectSlug, t.id);
         setItems(prev => prev.filter(it => it.id !== t.id));
-      } catch {
+      } catch (err) {
         setItems(prev =>
           prev.map(it => (it.id === t.id ? { ...it, pendingDelete: false } : it)),
+        );
+        showBucketError(
+          t.bucket,
+          err instanceof Error ? err.message : 'Failed to delete todo.',
         );
       }
     });
@@ -106,8 +138,12 @@ export function TodosPanel({
         await createTodoAction(projectSlug, fd);
         // revalidation will re-sync actual id; drop the temp row.
         setItems(prev => prev.filter(it => it.id !== tempId));
-      } catch {
+      } catch (err) {
         setItems(prev => prev.filter(it => it.id !== tempId));
+        showBucketError(
+          bucket,
+          err instanceof Error ? err.message : 'Failed to add todo.',
+        );
       }
     });
   };
@@ -126,8 +162,12 @@ export function TodosPanel({
     startTransition(async () => {
       try {
         await updateTodoTextAction(projectSlug, originalId, trimmed);
-      } catch {
+      } catch (err) {
         setItems(prev => prev.map(it => (it.id === originalId ? { ...it, text: t.text } : it)));
+        showBucketError(
+          t.bucket,
+          err instanceof Error ? err.message : 'Failed to update todo.',
+        );
       }
     });
   };
@@ -152,6 +192,16 @@ export function TodosPanel({
                 {done} / {bucketItems.length}
               </span>
             </div>
+            {bucketErrors[bucket] && (
+              <div
+                role="alert"
+                data-testid={`todo-bucket-error-${bucket}`}
+                className="flex items-start gap-1.5 bg-danger-subtle border border-danger-subtle rounded-md px-2 py-1.5 mb-2 text-xs text-danger-fg"
+              >
+                <AlertIcon size={12} className="mt-0.5 flex-shrink-0" />
+                <span>{bucketErrors[bucket]}</span>
+              </div>
+            )}
             {bucketItems.length === 0 ? (
               <p className="text-xs text-fg-muted mb-3">—</p>
             ) : (
