@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { PlusIcon } from '@primer/octicons-react';
 import type { ResearchEntry, EntryType } from '@/lib/types';
 import {
   ENTRY_TYPE_LABELS,
@@ -13,7 +15,13 @@ import { EntryModal } from './EntryModal';
 
 type FilterValue = 'all' | EntryType;
 
-export function JournalView({ entries }: { entries: ResearchEntry[] }) {
+export function JournalView({
+  entries,
+  projectSlug,
+}: {
+  entries: ResearchEntry[];
+  projectSlug: string;
+}) {
   const [filter, setFilter] = useState<FilterValue>('all');
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -36,21 +44,29 @@ export function JournalView({ entries }: { entries: ResearchEntry[] }) {
             카드를 좌우로 넘겨 그날의 발견/실패/구현/고민을 한눈에 보세요.
           </p>
         </div>
-        <div className="flex gap-1.5 text-xs">
-          <FilterChip
-            active={filter === 'all'}
-            onClick={() => setFilter('all')}
-            label="All"
-          />
-          {ENTRY_TYPE_ORDER.map(t => (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1.5 text-xs">
             <FilterChip
-              key={t}
-              active={filter === t}
-              onClick={() => setFilter(t)}
-              label={ENTRY_TYPE_LABELS[t]}
-              dotClass={ENTRY_TYPE_STRIP_BG[t]}
+              active={filter === 'all'}
+              onClick={() => setFilter('all')}
+              label="All"
             />
-          ))}
+            {ENTRY_TYPE_ORDER.map(t => (
+              <FilterChip
+                key={t}
+                active={filter === t}
+                onClick={() => setFilter(t)}
+                label={ENTRY_TYPE_LABELS[t]}
+                dotClass={ENTRY_TYPE_STRIP_BG[t]}
+              />
+            ))}
+          </div>
+          <Link
+            href={`/projects/${projectSlug}/entries/new`}
+            className="px-3 h-8 inline-flex items-center gap-1 rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
+          >
+            <PlusIcon size={14} /> New entry
+          </Link>
         </div>
       </section>
       <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -58,7 +74,11 @@ export function JournalView({ entries }: { entries: ResearchEntry[] }) {
           <EntryCard key={entry.id} entry={entry} onOpen={setOpenId} />
         ))}
       </section>
-      <EntryModal entry={open} onClose={() => setOpenId(null)} />
+      <EntryModal
+        entry={open}
+        projectSlug={projectSlug}
+        onClose={() => setOpenId(null)}
+      />
     </>
   );
 }

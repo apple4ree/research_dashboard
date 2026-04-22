@@ -50,7 +50,7 @@ export default async function ProjectOverview({
         <>
           <TimelinePanel milestones={milestones} projectSlug={slug} />
           <TodosPanel todos={todos} projectSlug={slug} />
-          <JournalView entries={entries} />
+          <JournalView entries={entries} projectSlug={slug} />
         </>
       ) : (
         <EmptyState
