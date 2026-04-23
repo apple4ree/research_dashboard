@@ -132,6 +132,44 @@ export function MemberForm(
             </select>
           </div>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="email">
+              Email <span className="text-fg-muted font-normal">(optional)</span>
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              defaultValue={initial?.email ?? ''}
+              placeholder="jane@example.com"
+              className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
+            />
+            <p className="text-xs text-fg-muted mt-1">
+              Used to match the GitHub sign-in to this member on first login.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="githubLogin">
+              GitHub handle <span className="text-fg-muted font-normal">(optional)</span>
+            </label>
+            <input
+              id="githubLogin"
+              name="githubLogin"
+              type="text"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              defaultValue={initial?.githubLogin ?? ''}
+              placeholder="e.g., johndoe"
+              className="w-full border border-border-default rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
+            />
+            <p className="text-xs text-fg-muted mt-1">
+              Allowlists this GitHub account to sign in to LabHub.
+            </p>
+          </div>
+        </div>
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="bio">
             Bio (optional)

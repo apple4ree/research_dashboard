@@ -10,6 +10,8 @@ export type UpdateMemberState = { error?: string } | null;
 
 const ROLES: readonly MemberRole[] = ['PI', 'Postdoc', 'PhD', 'MS', 'Intern', 'Alumni'];
 const LOGIN_PATTERN = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9]([A-Za-z0-9-]{0,38})$/;
 
 export async function createMemberAction(
   _prev: CreateMemberState,
@@ -19,6 +21,10 @@ export async function createMemberAction(
   const displayName = String(formData.get('displayName') ?? '').trim();
   const role = String(formData.get('role') ?? '') as MemberRole;
   const bio = String(formData.get('bio') ?? '').trim() || null;
+  const emailRaw = String(formData.get('email') ?? '').trim();
+  const email = emailRaw === '' ? null : emailRaw.toLowerCase();
+  const githubLoginRaw = String(formData.get('githubLogin') ?? '').trim();
+  const githubLogin = githubLoginRaw === '' ? null : githubLoginRaw;
   const pinnedSlugsRaw = formData.getAll('pinnedProjectSlugs').map(String).filter(Boolean);
 
   if (!login) return { error: 'Login is required.' };
@@ -27,9 +33,24 @@ export async function createMemberAction(
   }
   if (!displayName) return { error: 'Display name is required.' };
   if (!ROLES.includes(role)) return { error: `Invalid role "${role}".` };
+  if (email && !EMAIL_PATTERN.test(email)) {
+    return { error: `Invalid email "${email}".` };
+  }
+  if (githubLogin && !GITHUB_LOGIN_PATTERN.test(githubLogin)) {
+    return { error: `Invalid GitHub login "${githubLogin}".` };
+  }
 
   const existing = await prisma.member.findUnique({ where: { login } });
   if (existing) return { error: `Member "${login}" already exists.` };
+
+  if (email) {
+    const emailClash = await prisma.member.findUnique({ where: { email } });
+    if (emailClash) return { error: `Email "${email}" is already used by member "${emailClash.login}".` };
+  }
+  if (githubLogin) {
+    const ghClash = await prisma.member.findUnique({ where: { githubLogin } });
+    if (ghClash) return { error: `GitHub login "${githubLogin}" is already used by member "${ghClash.login}".` };
+  }
 
   await prisma.member.create({
     data: {
@@ -37,6 +58,8 @@ export async function createMemberAction(
       displayName,
       role,
       bio,
+      email,
+      githubLogin,
       pinnedProjectSlugs: JSON.stringify(pinnedSlugsRaw),
     },
   });
@@ -57,10 +80,33 @@ export async function updateMemberAction(
   const displayName = String(formData.get('displayName') ?? '').trim();
   const role = String(formData.get('role') ?? '') as MemberRole;
   const bio = String(formData.get('bio') ?? '').trim() || null;
+  const emailRaw = String(formData.get('email') ?? '').trim();
+  const email = emailRaw === '' ? null : emailRaw.toLowerCase();
+  const githubLoginRaw = String(formData.get('githubLogin') ?? '').trim();
+  const githubLogin = githubLoginRaw === '' ? null : githubLoginRaw;
   const pinnedSlugsRaw = formData.getAll('pinnedProjectSlugs').map(String).filter(Boolean);
 
   if (!displayName) return { error: 'Display name is required.' };
   if (!ROLES.includes(role)) return { error: `Invalid role "${role}".` };
+  if (email && !EMAIL_PATTERN.test(email)) {
+    return { error: `Invalid email "${email}".` };
+  }
+  if (githubLogin && !GITHUB_LOGIN_PATTERN.test(githubLogin)) {
+    return { error: `Invalid GitHub login "${githubLogin}".` };
+  }
+
+  if (email && email !== existing.email) {
+    const emailClash = await prisma.member.findUnique({ where: { email } });
+    if (emailClash && emailClash.login !== login) {
+      return { error: `Email "${email}" is already used by member "${emailClash.login}".` };
+    }
+  }
+  if (githubLogin && githubLogin !== existing.githubLogin) {
+    const ghClash = await prisma.member.findUnique({ where: { githubLogin } });
+    if (ghClash && ghClash.login !== login) {
+      return { error: `GitHub login "${githubLogin}" is already used by member "${ghClash.login}".` };
+    }
+  }
 
   await prisma.member.update({
     where: { login },
@@ -68,6 +114,8 @@ export async function updateMemberAction(
       displayName,
       role,
       bio,
+      email,
+      githubLogin,
       pinnedProjectSlugs: JSON.stringify(pinnedSlugsRaw),
     },
   });

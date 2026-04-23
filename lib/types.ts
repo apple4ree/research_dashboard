@@ -54,6 +54,8 @@ export interface Member {
   displayName: string;
   role: MemberRole;
   avatarUrl?: string;
+  email?: string;
+  githubLogin?: string;
   bio?: string;
   pinnedProjectSlugs: Slug[];
 }
