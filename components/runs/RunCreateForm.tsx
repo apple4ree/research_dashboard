@@ -27,23 +27,34 @@ export function RunCreateForm({
   projects,
   members,
   defaultProjectSlug,
+  scopedProjectSlug,
 }: {
   projects: Project[];
   members: Member[];
   defaultProjectSlug?: string;
+  scopedProjectSlug?: string;
 }) {
   const [state, formAction, pending] = useActionState<CreateRunState, FormData>(
     createRunAction,
     null,
   );
+  const scopedProject = scopedProjectSlug
+    ? projects.find(p => p.slug === scopedProjectSlug)
+    : undefined;
+  const backHref = scopedProjectSlug
+    ? `/projects/${scopedProjectSlug}/experiments`
+    : '/experiments';
+  const backLabel = scopedProject
+    ? `Back to ${scopedProject.name} experiments`
+    : 'Back to experiments';
 
   return (
     <div className="max-w-3xl">
       <Link
-        href="/experiments"
+        href={backHref}
         className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
       >
-        <ArrowLeftIcon size={14} /> Back to experiments
+        <ArrowLeftIcon size={14} /> {backLabel}
       </Link>
       <h1 className="text-lg font-semibold mb-4">New run</h1>
       <form
@@ -77,19 +88,28 @@ export function RunCreateForm({
             <label className="block text-sm font-medium mb-1" htmlFor="projectSlug">
               Project
             </label>
-            <select
-              id="projectSlug"
-              name="projectSlug"
-              required
-              defaultValue={defaultProjectSlug ?? projects[0]?.slug ?? ''}
-              className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
-            >
-              {projects.map(p => (
-                <option key={p.slug} value={p.slug}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            {scopedProjectSlug ? (
+              <>
+                <input type="hidden" name="projectSlug" value={scopedProjectSlug} />
+                <div className="w-full border border-border-default rounded-md px-3 py-2 text-sm bg-canvas-subtle text-fg-muted">
+                  {scopedProject?.name ?? scopedProjectSlug}
+                </div>
+              </>
+            ) : (
+              <select
+                id="projectSlug"
+                name="projectSlug"
+                required
+                defaultValue={defaultProjectSlug ?? projects[0]?.slug ?? ''}
+                className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
+              >
+                {projects.map(p => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="status">
@@ -177,7 +197,7 @@ export function RunCreateForm({
             {pending ? 'Creating…' : 'Create run'}
           </button>
           <Link
-            href="/experiments"
+            href={backHref}
             className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
           >
             Cancel

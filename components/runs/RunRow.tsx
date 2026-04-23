@@ -21,7 +21,7 @@ export function RunRow({ run, hideProject = false, now, ctx, actions }: { run: E
     <li className="px-4 py-3 flex items-center gap-3 border-b border-border-muted last:border-0">
       <StatusBadge status={run.status} />
       <div className="flex-1 min-w-0">
-        <Link href={`/experiments/${run.id}`} className="font-medium text-sm text-fg-default hover:text-accent-fg truncate block">
+        <Link href={`/projects/${run.projectSlug}/experiments/${run.id}`} className="font-medium text-sm text-fg-default hover:text-accent-fg truncate block">
           {run.name}
         </Link>
         <div className="text-xs text-fg-muted flex items-center gap-2 mt-0.5">

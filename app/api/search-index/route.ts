@@ -56,7 +56,7 @@ export async function GET() {
       type: 'run' as const,
       title: r.name,
       subtitle: `${r.projectSlug} · ${r.status}`,
-      href: `/experiments/${r.id}`,
+      href: `/projects/${r.projectSlug}/experiments/${r.id}`,
       keywords: [r.name, r.projectSlug, r.triggeredByLogin, r.summary ?? ''].join(' '),
     })),
     ...discussions.map((d) => ({

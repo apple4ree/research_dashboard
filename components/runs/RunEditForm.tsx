@@ -9,7 +9,9 @@ import {
 } from '@/lib/actions/runs';
 import type { ExperimentRun } from '@/lib/types';
 
-export function RunEditForm({ run }: { run: ExperimentRun }) {
+export function RunEditForm({ run, projectSlug }: { run: ExperimentRun; projectSlug?: string }) {
+  const slug = projectSlug ?? run.projectSlug;
+  const backHref = `/projects/${slug}/experiments/${run.id}`;
   const bound = updateRunAction.bind(null, run.id);
   const [state, formAction, pending] = useActionState<UpdateRunState, FormData>(
     bound,
@@ -19,7 +21,7 @@ export function RunEditForm({ run }: { run: ExperimentRun }) {
   return (
     <div className="max-w-2xl">
       <Link
-        href={`/experiments/${run.id}`}
+        href={backHref}
         className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
       >
         <ArrowLeftIcon size={14} /> Back to run
@@ -72,7 +74,7 @@ export function RunEditForm({ run }: { run: ExperimentRun }) {
             {pending ? 'Saving…' : 'Save changes'}
           </button>
           <Link
-            href={`/experiments/${run.id}`}
+            href={backHref}
             className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
           >
             Cancel

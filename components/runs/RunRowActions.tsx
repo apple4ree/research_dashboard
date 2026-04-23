@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { PencilIcon, TrashIcon } from '@primer/octicons-react';
 import { deleteRunAction } from '@/lib/actions/runs';
 
-export function RunRowActions({ runId }: { runId: string }) {
+export function RunRowActions({ runId, projectSlug }: { runId: string; projectSlug: string }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,7 +32,7 @@ export function RunRowActions({ runId }: { runId: string }) {
   return (
     <div className="flex items-center gap-1 text-xs">
       <Link
-        href={`/experiments/${runId}/edit`}
+        href={`/projects/${projectSlug}/experiments/${runId}/edit`}
         aria-label="Edit run"
         className="inline-flex items-center gap-1 px-2 h-7 border border-border-default rounded-md bg-canvas-subtle hover:bg-canvas-inset"
       >

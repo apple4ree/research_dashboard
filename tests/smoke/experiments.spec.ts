@@ -15,7 +15,7 @@ test('project experiments tab hides project link per row', async ({ page }) => {
 });
 
 test('run detail shows steps for an in-progress run', async ({ page }) => {
-  await page.goto('/experiments/exp-1428');
+  await page.goto('/projects/long-context-eval/experiments/exp-1428');
   await expect(page.getByRole('heading', { name: /sweep-context-len #1428/ })).toBeVisible();
   await expect(page.getByText('prepare')).toBeVisible();
   await expect(page.getByText('run 128k')).toBeVisible();

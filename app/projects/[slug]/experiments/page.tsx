@@ -16,7 +16,7 @@ export default async function ProjectExperiments({ params }: { params: Promise<{
   const newRunLink = (
     <div className="mb-3 flex justify-end">
       <Link
-        href={`/experiments/new?projectSlug=${slug}`}
+        href={`/projects/${slug}/experiments/new`}
         className="px-3 h-8 inline-flex items-center gap-1 rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
       >
         <PlusIcon size={14} /> New run
@@ -45,7 +45,7 @@ export default async function ProjectExperiments({ params }: { params: Promise<{
             hideProject
             now={now}
             ctx={ctx}
-            actions={<RunRowActions runId={r.id} />}
+            actions={<RunRowActions runId={r.id} projectSlug={slug} />}
           />
         ))}
       </ul>

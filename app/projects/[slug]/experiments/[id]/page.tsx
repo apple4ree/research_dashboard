@@ -1,38 +1,56 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeftIcon } from '@primer/octicons-react';
 import { StatusBadge } from '@/components/badges/StatusBadge';
 import { Avatar } from '@/components/people/Avatar';
-import { getProjectBySlug, getMemberByLogin, getRunById } from '@/lib/queries';
+import { getMemberByLogin, getRunById } from '@/lib/queries';
+import { loadProject } from '@/lib/mock/loaders';
 import { RunActions } from '@/components/runs/RunActions';
 
-export default async function RunDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function ProjectRunDetail({
+  params,
+}: {
+  params: Promise<{ slug: string; id: string }>;
+}) {
+  const { slug, id } = await params;
+  const { project } = await loadProject(Promise.resolve({ slug }));
   const run = await getRunById(id);
-  if (!run) notFound();
-  const [proj, actor] = await Promise.all([
-    getProjectBySlug(run.projectSlug),
-    getMemberByLogin(run.triggeredByLogin),
-  ]);
+  if (!run || run.projectSlug !== slug) notFound();
+  const actor = await getMemberByLogin(run.triggeredByLogin);
 
   return (
     <div className="space-y-4">
+      <Link
+        href={`/projects/${slug}/experiments`}
+        className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline"
+      >
+        <ArrowLeftIcon size={14} /> Back to {project.name} experiments
+      </Link>
       <div className="flex items-center gap-3 pb-3 border-b border-border-muted">
         <StatusBadge status={run.status} showLabel />
         <h1 className="text-lg font-semibold">{run.name}</h1>
         <div className="ml-auto text-xs text-fg-muted flex items-center gap-3">
-          <span className="flex items-center gap-1"><Avatar login={run.triggeredByLogin} size={14}/> {actor?.displayName}</span>
-          <span>{new Date(run.startedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-          <RunActions runId={run.id} />
+          <span className="flex items-center gap-1">
+            <Avatar login={run.triggeredByLogin} size={14} /> {actor?.displayName}
+          </span>
+          <span>
+            {new Date(run.startedAt).toLocaleString('en-US', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </span>
+          <RunActions runId={run.id} projectSlug={slug} />
         </div>
       </div>
-      {proj && (
-        <div className="text-sm">Project: <Link href={`/projects/${proj.slug}`} className="text-accent-fg hover:underline">{proj.name}</Link></div>
-      )}
       {run.summary && (
-        <div className="bg-white border border-border-default rounded-md p-4 text-sm">{run.summary}</div>
+        <div className="bg-white border border-border-default rounded-md p-4 text-sm">
+          {run.summary}
+        </div>
       )}
       <section>
-        <h2 className="text-xs uppercase tracking-wide text-fg-muted font-semibold mb-2">Steps</h2>
+        <h2 className="text-xs uppercase tracking-wide text-fg-muted font-semibold mb-2">
+          Steps
+        </h2>
         <ul className="bg-white border border-border-default rounded-md divide-y divide-border-muted">
           {(run.stepsMock ?? [{ name: 'run', status: run.status }]).map((s, i) => (
             <li key={i}>
@@ -45,7 +63,9 @@ export default async function RunDetail({ params }: { params: Promise<{ id: stri
                   )}
                 </summary>
                 {s.logSnippet && (
-                  <pre className="mt-2 bg-canvas-inset text-xs p-3 rounded-md overflow-x-auto whitespace-pre-wrap">{s.logSnippet}</pre>
+                  <pre className="mt-2 bg-canvas-inset text-xs p-3 rounded-md overflow-x-auto whitespace-pre-wrap">
+                    {s.logSnippet}
+                  </pre>
                 )}
               </details>
             </li>
@@ -53,7 +73,9 @@ export default async function RunDetail({ params }: { params: Promise<{ id: stri
         </ul>
       </section>
       <section>
-        <h2 className="text-xs uppercase tracking-wide text-fg-muted font-semibold mb-2">Artifacts</h2>
+        <h2 className="text-xs uppercase tracking-wide text-fg-muted font-semibold mb-2">
+          Artifacts
+        </h2>
         <div className="bg-white border border-border-default rounded-md p-4 text-sm text-fg-muted">
           No artifacts recorded for this run.
         </div>

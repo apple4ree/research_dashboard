@@ -68,7 +68,7 @@ export async function createRunAction(
   revalidatePath('/experiments');
   revalidatePath(`/projects/${projectSlug}/experiments`);
   revalidatePath('/');
-  redirect(`/experiments/${finalId}`);
+  redirect(`/projects/${projectSlug}/experiments/${finalId}`);
 }
 
 export async function updateRunAction(
@@ -90,9 +90,9 @@ export async function updateRunAction(
   });
 
   revalidatePath('/experiments');
-  revalidatePath(`/experiments/${id}`);
   revalidatePath(`/projects/${existing.projectSlug}/experiments`);
-  redirect(`/experiments/${id}`);
+  revalidatePath(`/projects/${existing.projectSlug}/experiments/${id}`);
+  redirect(`/projects/${existing.projectSlug}/experiments/${id}`);
 }
 
 export async function deleteRunAction(id: string): Promise<void> {
@@ -101,5 +101,5 @@ export async function deleteRunAction(id: string): Promise<void> {
   await prisma.experimentRun.delete({ where: { id } });
   revalidatePath('/experiments');
   revalidatePath(`/projects/${existing.projectSlug}/experiments`);
-  redirect('/experiments');
+  redirect(`/projects/${existing.projectSlug}/experiments`);
 }

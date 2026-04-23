@@ -10,7 +10,7 @@ const routes = [
   '/projects/reasoning-bench-v2/members',
   '/pipeline',
   '/experiments',
-  '/experiments/exp-1428',
+  '/projects/long-context-eval/experiments/exp-1428',
   '/discussions',
   '/discussions/d-001',
   '/members/dgu',
