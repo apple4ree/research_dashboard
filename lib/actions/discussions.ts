@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { CURRENT_USER } from '@/lib/queries/constants';
 import type { DiscussionCategory } from '@/lib/types';
+import { logActivity } from './events';
 
 const CATEGORY_VALUES: readonly DiscussionCategory[] = ['announcements', 'journal_club', 'qa', 'ideas'];
 
@@ -39,6 +40,12 @@ export async function createDiscussion(
       replyCount: 0,
       bodyMarkdown: body,
     },
+  });
+
+  await logActivity({
+    type: 'discussion',
+    actorLogin: CURRENT_USER,
+    payload: { discussionId: id, action: 'opened' },
   });
 
   revalidatePath('/discussions');
@@ -77,6 +84,12 @@ export async function createReply(
       data: { replyCount: { increment: 1 }, lastActivityAt: now },
     }),
   ]);
+
+  await logActivity({
+    type: 'discussion',
+    actorLogin: CURRENT_USER,
+    payload: { discussionId, action: 'replied' },
+  });
 
   revalidatePath(`/discussions/${discussionId}`);
   revalidatePath('/discussions');

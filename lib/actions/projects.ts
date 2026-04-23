@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { CURRENT_USER } from '@/lib/queries/constants';
+import { logActivity } from './events';
 
 export type CreateProjectState = { error?: string } | null;
 
@@ -66,6 +67,13 @@ export async function createProject(
         create: [{ memberLogin: CURRENT_USER }],
       },
     },
+  });
+
+  await logActivity({
+    type: 'project',
+    actorLogin: CURRENT_USER,
+    projectSlug: slug,
+    payload: { action: 'created' },
   });
 
   revalidatePath('/');

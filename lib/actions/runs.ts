@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import type { RunStatus } from '@/lib/types';
+import { logActivity } from './events';
+import { runStatusToEventAction } from '@/lib/events';
 
 export type UpdateRunState = { error?: string } | null;
 export type CreateRunState = { error?: string } | null;
@@ -63,6 +65,13 @@ export async function createRunAction(
       triggeredByLogin,
       summary,
     },
+  });
+
+  await logActivity({
+    type: 'experiment',
+    actorLogin: triggeredByLogin,
+    projectSlug,
+    payload: { runId: finalId, action: runStatusToEventAction(status) },
   });
 
   revalidatePath('/experiments');

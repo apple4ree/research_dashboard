@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { PAPER_STAGE_ORDER } from '@/lib/labels';
 import type { PaperStage } from '@/lib/types';
+import { CURRENT_USER } from '@/lib/queries/constants';
+import { logActivity } from './events';
 
 export async function updatePaperStage(paperId: string, stage: PaperStage): Promise<void> {
   if (!PAPER_STAGE_ORDER.includes(stage)) throw new Error(`Invalid stage ${stage}`);
@@ -60,6 +62,13 @@ export async function createPaper(
         })),
       },
     },
+  });
+
+  await logActivity({
+    type: 'paper',
+    actorLogin: authors[0] ?? CURRENT_USER,
+    projectSlug,
+    payload: { paperId: id, action: stage === 'published' ? 'published' : 'created' },
   });
 
   revalidatePath(`/projects/${projectSlug}/papers`);
