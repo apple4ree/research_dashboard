@@ -84,6 +84,55 @@ export async function createReply(
   return null;
 }
 
+export type UpdateDiscussionState = { error?: string } | null;
+
+export async function updateDiscussionAction(
+  discussionId: string,
+  _prev: UpdateDiscussionState,
+  formData: FormData,
+): Promise<UpdateDiscussionState> {
+  const existing = await prisma.discussion.findUnique({ where: { id: discussionId } });
+  if (!existing) return { error: `Discussion "${discussionId}" not found.` };
+
+  const category = String(formData.get('category') ?? '');
+  const title = String(formData.get('title') ?? '').trim();
+  const bodyMarkdown = String(formData.get('body') ?? '').trim();
+
+  if (!title) return { error: 'Title is required.' };
+  if (!bodyMarkdown) return { error: 'Body is required.' };
+  if (!CATEGORY_VALUES.includes(category as DiscussionCategory)) {
+    return { error: `Invalid category "${category}".` };
+  }
+
+  await prisma.discussion.update({
+    where: { id: discussionId },
+    data: { category, title, bodyMarkdown },
+  });
+
+  revalidatePath(`/discussions/${discussionId}`);
+  revalidatePath('/discussions');
+  revalidatePath('/');
+  redirect(`/discussions/${discussionId}`);
+}
+
+export async function updateReplyAction(
+  discussionId: string,
+  replyId: string,
+  bodyMarkdown: string,
+): Promise<void> {
+  const trimmed = bodyMarkdown.trim();
+  if (!trimmed) throw new Error('Reply cannot be empty');
+  const reply = await prisma.reply.findUnique({ where: { id: replyId } });
+  if (!reply || reply.discussionId !== discussionId) {
+    throw new Error('Reply not found');
+  }
+  await prisma.reply.update({
+    where: { id: replyId },
+    data: { bodyMarkdown: trimmed },
+  });
+  revalidatePath(`/discussions/${discussionId}`);
+}
+
 export async function deleteDiscussionAction(discussionId: string): Promise<void> {
   const existing = await prisma.discussion.findUnique({ where: { id: discussionId } });
   if (!existing) {
