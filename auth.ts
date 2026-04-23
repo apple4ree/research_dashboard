@@ -12,6 +12,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma as unknown as PrismaClient),
   providers: [
     GitHub({
+      // Explicit bindings — don't rely solely on NextAuth v5's AUTH_GITHUB_*
+      // auto-pick. Read either naming convention for safety so either
+      // .env.local style works.
+      clientId: process.env.AUTH_GITHUB_ID ?? process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.AUTH_GITHUB_SECRET ?? process.env.GITHUB_CLIENT_SECRET,
       // Link the GitHub account to an existing User row when the email matches.
       // We still gate access on the Member allowlist in the signIn callback.
       allowDangerousEmailAccountLinking: true,
