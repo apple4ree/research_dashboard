@@ -60,6 +60,9 @@ export async function updateReleaseAction(
 ): Promise<UpdateReleaseState> {
   const existing = await prisma.release.findUnique({ where: { id: releaseId } });
   if (!existing) return { error: `Release "${releaseId}" not found.` };
+  if (existing.source === 'github') {
+    return { error: 'GitHub-sourced releases are read-only. Edit on GitHub and re-sync.' };
+  }
 
   const name = String(formData.get('name') ?? '').trim();
   const kind = String(formData.get('kind') ?? '') as ReleaseKind;
@@ -94,6 +97,9 @@ export async function updateReleaseAction(
 export async function deleteReleaseAction(releaseId: string): Promise<void> {
   const existing = await prisma.release.findUnique({ where: { id: releaseId } });
   if (!existing) return;
+  // GitHub-sourced releases are read-only and should only be removed by
+  // disconnecting the project from the GitHub repo.
+  if (existing.source === 'github') return;
   await prisma.release.delete({ where: { id: releaseId } });
   revalidatePath(`/projects/${existing.projectSlug}/data`);
   revalidatePath(`/projects/${existing.projectSlug}`);
