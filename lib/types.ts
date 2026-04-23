@@ -20,6 +20,9 @@ export interface Project {
   repos: { label: string; url: string }[];
   paperIds: string[];
   releaseIds: string[];
+  githubRepo?: string;
+  readmeMarkdown?: string;
+  lastSyncedAt?: string;
 }
 
 export interface Paper {
@@ -76,6 +79,9 @@ export interface Release {
   publishedAt: string;
   description?: string;
   downloadUrl?: string;
+  source?: string;
+  externalId?: string;
+  lastSyncedAt?: string;
 }
 
 interface BaseEvent {

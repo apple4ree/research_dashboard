@@ -33,16 +33,18 @@ model Member {
 
 // ========== Projects ==========
 model Project {
-  slug         String    @id
-  name         String
-  description  String
-  tags         String    // JSON array
-  pinned       Boolean
-  createdAt    DateTime
-  updatedAt    DateTime
-  source       String    @default("internal")
-  externalId   String?   @unique
-  lastSyncedAt DateTime?
+  slug           String    @id
+  name           String
+  description    String
+  tags           String    // JSON array
+  pinned         Boolean
+  createdAt      DateTime
+  updatedAt      DateTime
+  source         String    @default("internal")
+  externalId     String?   @unique
+  lastSyncedAt   DateTime?
+  githubRepo     String?   // "owner/repo" when connected to GitHub
+  readmeMarkdown String?   // optional synced README content (from GitHub or internal)
 
   repos      ProjectRepo[]
   members    ProjectMember[]

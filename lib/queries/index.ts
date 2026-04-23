@@ -65,6 +65,9 @@ type ProjectRow = {
   pinned: boolean;
   createdAt: Date;
   updatedAt: Date;
+  githubRepo?: string | null;
+  readmeMarkdown?: string | null;
+  lastSyncedAt?: Date | null;
   members?: { memberLogin: string }[];
   repos?: { label: string; url: string }[];
   papers?: { id: string }[];
@@ -72,7 +75,7 @@ type ProjectRow = {
 };
 
 function mapProject(row: ProjectRow): Project {
-  return {
+  const project: Project = {
     slug: row.slug,
     name: row.name,
     description: row.description,
@@ -85,6 +88,10 @@ function mapProject(row: ProjectRow): Project {
     paperIds: (row.papers ?? []).map(p => p.id),
     releaseIds: (row.releases ?? []).map(r => r.id),
   };
+  if (row.githubRepo != null) project.githubRepo = row.githubRepo;
+  if (row.readmeMarkdown != null) project.readmeMarkdown = row.readmeMarkdown;
+  if (row.lastSyncedAt != null) project.lastSyncedAt = row.lastSyncedAt.toISOString();
+  return project;
 }
 
 type PaperRow = {
@@ -183,6 +190,9 @@ type ReleaseRow = {
   publishedAt: Date;
   description: string | null;
   downloadUrl: string | null;
+  source?: string | null;
+  externalId?: string | null;
+  lastSyncedAt?: Date | null;
 };
 
 function mapRelease(row: ReleaseRow): Release {
@@ -196,6 +206,9 @@ function mapRelease(row: ReleaseRow): Release {
   };
   if (row.description != null) rel.description = row.description;
   if (row.downloadUrl != null) rel.downloadUrl = row.downloadUrl;
+  if (row.source != null) rel.source = row.source;
+  if (row.externalId != null) rel.externalId = row.externalId;
+  if (row.lastSyncedAt != null) rel.lastSyncedAt = row.lastSyncedAt.toISOString();
   return rel;
 }
 
