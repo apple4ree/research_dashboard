@@ -9,7 +9,6 @@ import {
   type ConnectGitHubState,
   type SyncResult,
 } from '@/lib/actions/github';
-import { relTime } from '@/lib/time';
 
 interface Props {
   slug: string;
@@ -123,7 +122,7 @@ export function GitHubConnectCard({ slug, githubRepo, lastSyncedAt }: Props) {
           </div>
           <div className="text-xs text-fg-muted">
             {lastSyncedAt
-              ? `Last synced ${relTime(lastSyncedAt, Date.now())}`
+              ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
               : 'Not synced yet.'}
           </div>
 

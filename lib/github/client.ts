@@ -33,7 +33,6 @@ async function githubFetch(path: string): Promise<unknown> {
     throw new GitHubError('Repository not found on GitHub.', 404);
   }
   if (res.status === 403) {
-    // eslint-disable-next-line no-console
     console.warn('[github] Rate limit or forbidden response for', path);
     throw new GitHubError(
       'GitHub rate limit exceeded. Set GITHUB_TOKEN to increase the limit from 60/hr to 5000/hr.',
