@@ -1,28 +1,21 @@
-import Link from 'next/link';
-import { Avatar } from '@/components/people/Avatar';
-import { LabelChip } from '@/components/badges/LabelChip';
-import { getMembersByProject } from '@/lib/queries';
+import { getMembersByProject, getAllMembers } from '@/lib/queries';
 import { loadProject } from '@/lib/mock/loaders';
+import { ProjectMembersView } from '@/components/project/ProjectMembersView';
 
 export default async function MembersTab({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await loadProject(params);
-  const members = await getMembersByProject(slug);
+  const [members, allMembers] = await Promise.all([
+    getMembersByProject(slug),
+    getAllMembers(),
+  ]);
+  const memberSet = new Set(members.map(m => m.login));
+  const candidates = allMembers.filter(m => !memberSet.has(m.login));
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {members.map(m => (
-        <Link key={m.login} href={`/members/${m.login}`} className="bg-white border border-border-default rounded-md p-4 hover:border-accent-fg">
-          <div className="flex items-center gap-3">
-            <Avatar login={m.login} size={40} />
-            <div>
-              <div className="font-semibold text-sm">{m.displayName}</div>
-              <div className="text-xs text-fg-muted">@{m.login}</div>
-            </div>
-            <LabelChip className="ml-auto">{m.role}</LabelChip>
-          </div>
-          {m.bio && <p className="text-xs text-fg-muted mt-2 line-clamp-2">{m.bio}</p>}
-        </Link>
-      ))}
-    </div>
+    <ProjectMembersView
+      projectSlug={slug}
+      members={members}
+      candidates={candidates}
+    />
   );
 }
