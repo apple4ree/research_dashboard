@@ -15,9 +15,14 @@ export function CreateMenu() {
           <Link href="/projects/new">New project</Link>
         </DropdownMenuItem>
         <DropdownMenuItem disabled>New paper (select a project)</DropdownMenuItem>
-        <DropdownMenuItem disabled>New experiment</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/experiments/new">New experiment</Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/discussions/new">New discussion</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/members/new">New member</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
