@@ -10,7 +10,6 @@ import { KpiBar } from '@/components/journal/KpiBar';
 import { TimelinePanel } from '@/components/journal/TimelinePanel';
 import { TodosPanel } from '@/components/journal/TodosPanel';
 import { JournalView } from '@/components/journal/JournalView';
-import { EmptyState } from '@/components/misc/EmptyState';
 import { MarkdownBody } from '@/components/md/MarkdownBody';
 
 export default async function ProjectOverview({
@@ -33,9 +32,6 @@ export default async function ProjectOverview({
   const meetingsCount = entries.filter(e => e.type === 'meeting').length;
   const targetVenue = papers.find(p => p.venue)?.venue ?? '—';
 
-  const hasJournal =
-    entries.length > 0 || milestones.length > 0 || todos.length > 0;
-
   return (
     <div className="space-y-6">
       <KpiBar
@@ -47,24 +43,15 @@ export default async function ProjectOverview({
         ]}
       />
 
-      {project.readmeMarkdown && !hasJournal ? (
+      {project.readmeMarkdown ? (
         <section className="bg-white border border-border-default rounded-md p-6">
           <MarkdownBody source={project.readmeMarkdown} />
         </section>
       ) : null}
 
-      {hasJournal ? (
-        <>
-          <TimelinePanel milestones={milestones} projectSlug={slug} />
-          <TodosPanel todos={todos} projectSlug={slug} />
-          <JournalView entries={entries} projectSlug={slug} />
-        </>
-      ) : (
-        <EmptyState
-          title="No journal entries yet"
-          body="Timeline, todos, and research log cards will appear here once you add content."
-        />
-      )}
+      <TimelinePanel milestones={milestones} projectSlug={slug} />
+      <TodosPanel todos={todos} projectSlug={slug} />
+      <JournalView entries={entries} projectSlug={slug} />
     </div>
   );
 }

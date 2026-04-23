@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import type { ExperimentRun } from '@/lib/types';
 import { StatusBadge } from '@/components/badges/StatusBadge';
 import { Avatar } from '@/components/people/Avatar';
@@ -13,7 +14,7 @@ function fmtDuration(sec?: number) {
   return `${h}h ${m}m`;
 }
 
-export function RunRow({ run, hideProject = false, now, ctx }: { run: ExperimentRun; hideProject?: boolean; now: number; ctx: RunContext }) {
+export function RunRow({ run, hideProject = false, now, ctx, actions }: { run: ExperimentRun; hideProject?: boolean; now: number; ctx: RunContext; actions?: ReactNode }) {
   const proj = ctx.projects.get(run.projectSlug);
   const actor = ctx.members.get(run.triggeredByLogin);
   return (
@@ -34,6 +35,7 @@ export function RunRow({ run, hideProject = false, now, ctx }: { run: Experiment
         <div>{fmtDuration(run.durationSec)}</div>
         <div>{relTime(run.startedAt, now)}</div>
       </div>
+      {actions}
     </li>
   );
 }
