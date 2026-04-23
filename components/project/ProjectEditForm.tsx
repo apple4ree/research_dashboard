@@ -10,8 +10,18 @@ import {
 import type { Project } from '@/lib/types';
 import { ProjectDeleteButton } from '@/components/project/ProjectDeleteButton';
 import { GitHubConnectCard } from '@/components/project/GitHubConnectCard';
+import {
+  ProjectReposSection,
+  type ProjectRepoItem,
+} from '@/components/project/ProjectReposSection';
 
-export function ProjectEditForm({ project }: { project: Project }) {
+export function ProjectEditForm({
+  project,
+  repos,
+}: {
+  project: Project;
+  repos: ProjectRepoItem[];
+}) {
   const bound = updateProjectAction.bind(null, project.slug);
   const [state, formAction, pending] = useActionState<UpdateProjectState, FormData>(
     bound,
@@ -124,6 +134,8 @@ export function ProjectEditForm({ project }: { project: Project }) {
           </Link>
         </div>
       </form>
+
+      <ProjectReposSection projectSlug={project.slug} repos={repos} />
 
       <GitHubConnectCard
         slug={project.slug}
