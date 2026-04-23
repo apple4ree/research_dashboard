@@ -154,6 +154,7 @@ type DiscussionRow = {
   category: string;
   title: string;
   authorLogin: string;
+  projectSlug: string | null;
   createdAt: Date;
   lastActivityAt: Date;
   replyCount: number;
@@ -168,6 +169,7 @@ function mapDiscussion(row: DiscussionRow): Discussion {
     category: row.category as DiscussionCategory,
     title: row.title,
     authorLogin: row.authorLogin,
+    projectSlug: row.projectSlug ?? undefined,
     createdAt: row.createdAt.toISOString(),
     lastActivityAt: row.lastActivityAt.toISOString(),
     replyCount: row.replyCount,
@@ -368,6 +370,14 @@ export async function getAllRuns(): Promise<ExperimentRun[]> {
 
 export async function getAllDiscussions(): Promise<Discussion[]> {
   const rows = await prisma.discussion.findMany({ include: { replies: true } });
+  return rows.map(mapDiscussion);
+}
+
+export async function getDiscussionsByProject(projectSlug: string): Promise<Discussion[]> {
+  const rows = await prisma.discussion.findMany({
+    where: { projectSlug },
+    include: { replies: true },
+  });
   return rows.map(mapDiscussion);
 }
 

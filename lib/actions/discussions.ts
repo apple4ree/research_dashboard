@@ -19,11 +19,17 @@ export async function createDiscussion(
   const category = String(formData.get('category') ?? '');
   const title = String(formData.get('title') ?? '').trim();
   const body = String(formData.get('body') ?? '').trim();
+  const projectSlugRaw = String(formData.get('projectSlug') ?? '').trim();
+  const projectSlug = projectSlugRaw || null;
 
   if (!title) return { error: 'Title is required.' };
   if (!body) return { error: 'Body is required.' };
   if (!CATEGORY_VALUES.includes(category as DiscussionCategory)) {
     return { error: `Invalid category "${category}".` };
+  }
+  if (projectSlug) {
+    const project = await prisma.project.findUnique({ where: { slug: projectSlug } });
+    if (!project) return { error: `Project "${projectSlug}" not found.` };
   }
 
   const id = `d-${randomUUID().slice(0, 8)}`;
@@ -35,6 +41,7 @@ export async function createDiscussion(
       category,
       title,
       authorLogin: CURRENT_USER,
+      projectSlug,
       createdAt: now,
       lastActivityAt: now,
       replyCount: 0,
@@ -45,10 +52,12 @@ export async function createDiscussion(
   await logActivity({
     type: 'discussion',
     actorLogin: CURRENT_USER,
+    projectSlug: projectSlug ?? undefined,
     payload: { discussionId: id, action: 'opened' },
   });
 
   revalidatePath('/discussions');
+  if (projectSlug) revalidatePath(`/projects/${projectSlug}/discussions`);
   revalidatePath('/');
   redirect(`/discussions/${id}`);
 }
@@ -110,20 +119,30 @@ export async function updateDiscussionAction(
   const category = String(formData.get('category') ?? '');
   const title = String(formData.get('title') ?? '').trim();
   const bodyMarkdown = String(formData.get('body') ?? '').trim();
+  const projectSlugRaw = String(formData.get('projectSlug') ?? '').trim();
+  const projectSlug = projectSlugRaw || null;
 
   if (!title) return { error: 'Title is required.' };
   if (!bodyMarkdown) return { error: 'Body is required.' };
   if (!CATEGORY_VALUES.includes(category as DiscussionCategory)) {
     return { error: `Invalid category "${category}".` };
   }
+  if (projectSlug) {
+    const project = await prisma.project.findUnique({ where: { slug: projectSlug } });
+    if (!project) return { error: `Project "${projectSlug}" not found.` };
+  }
 
   await prisma.discussion.update({
     where: { id: discussionId },
-    data: { category, title, bodyMarkdown },
+    data: { category, title, bodyMarkdown, projectSlug },
   });
 
   revalidatePath(`/discussions/${discussionId}`);
   revalidatePath('/discussions');
+  if (existing.projectSlug) revalidatePath(`/projects/${existing.projectSlug}/discussions`);
+  if (projectSlug && projectSlug !== existing.projectSlug) {
+    revalidatePath(`/projects/${projectSlug}/discussions`);
+  }
   revalidatePath('/');
   redirect(`/discussions/${discussionId}`);
 }

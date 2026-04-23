@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { DiscussionForm } from '@/components/discussions/DiscussionForm';
-import { getDiscussionById } from '@/lib/queries';
+import { getDiscussionById, getAllProjects } from '@/lib/queries';
 
 export default async function EditDiscussionPage({
   params,
@@ -8,8 +8,11 @@ export default async function EditDiscussionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const discussion = await getDiscussionById(id);
+  const [discussion, projects] = await Promise.all([
+    getDiscussionById(id),
+    getAllProjects(),
+  ]);
   if (!discussion) notFound();
 
-  return <DiscussionForm mode="edit" initial={discussion} />;
+  return <DiscussionForm mode="edit" initial={discussion} projects={projects} />;
 }

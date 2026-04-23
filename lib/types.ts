@@ -63,6 +63,7 @@ export interface Discussion {
   category: DiscussionCategory;
   title: string;
   authorLogin: UserLogin;
+  projectSlug?: Slug;
   createdAt: string;
   lastActivityAt: string;
   replyCount: number;

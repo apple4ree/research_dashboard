@@ -46,15 +46,16 @@ model Project {
   githubRepo     String?   // "owner/repo" when connected to GitHub
   readmeMarkdown String?   // optional synced README content (from GitHub or internal)
 
-  repos      ProjectRepo[]
-  members    ProjectMember[]
-  papers     Paper[]
-  releases   Release[]
-  runs       ExperimentRun[]
-  events     ActivityEvent[]
-  entries    ResearchEntry[]
-  milestones Milestone[]
-  todos      TodoItem[]
+  repos       ProjectRepo[]
+  members     ProjectMember[]
+  papers      Paper[]
+  releases    Release[]
+  runs        ExperimentRun[]
+  events      ActivityEvent[]
+  entries     ResearchEntry[]
+  milestones  Milestone[]
+  todos       TodoItem[]
+  discussions Discussion[]
 }
 
 model ProjectMember {
@@ -127,6 +128,7 @@ model Discussion {
   category       String
   title          String
   authorLogin    String
+  projectSlug    String?
   createdAt      DateTime
   lastActivityAt DateTime
   replyCount     Int
@@ -135,7 +137,8 @@ model Discussion {
   externalId     String?   @unique
   lastSyncedAt   DateTime?
 
-  author  Member  @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+  author  Member   @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+  project Project? @relation(fields: [projectSlug], references: [slug], onDelete: SetNull)
   replies Reply[]
 }
 

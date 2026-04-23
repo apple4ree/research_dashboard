@@ -14,17 +14,34 @@ import {
   DISCUSSION_CATEGORY_ICONS,
   DISCUSSION_CATEGORY_ORDER,
 } from '@/lib/labels';
-import type { Discussion } from '@/lib/types';
+import type { Discussion, Project } from '@/lib/types';
 
 type FormState = CreateDiscussionState | UpdateDiscussionState;
 
 export function DiscussionForm(
   props:
-    | { mode: 'create' }
-    | { mode: 'edit'; initial: Discussion },
+    | {
+        mode: 'create';
+        projects: Project[];
+        defaultProjectSlug?: string;
+        scopedProjectSlug?: string;
+      }
+    | {
+        mode: 'edit';
+        initial: Discussion;
+        projects: Project[];
+      },
 ) {
-  const { mode } = props;
+  const { mode, projects } = props;
   const initial = mode === 'edit' ? props.initial : undefined;
+  const defaultProjectSlug =
+    mode === 'create'
+      ? (props.scopedProjectSlug ?? props.defaultProjectSlug ?? '')
+      : (initial?.projectSlug ?? '');
+  const scopedProjectSlug = mode === 'create' ? props.scopedProjectSlug : undefined;
+  const scopedProject = scopedProjectSlug
+    ? projects.find(p => p.slug === scopedProjectSlug)
+    : undefined;
 
   const bound =
     mode === 'create'
@@ -36,8 +53,18 @@ export function DiscussionForm(
     null,
   );
 
-  const backHref = mode === 'edit' ? `/discussions/${initial!.id}` : '/discussions';
-  const backLabel = mode === 'edit' ? 'Back to discussion' : 'Back to discussions';
+  const backHref =
+    mode === 'edit'
+      ? `/discussions/${initial!.id}`
+      : scopedProjectSlug
+        ? `/projects/${scopedProjectSlug}/discussions`
+        : '/discussions';
+  const backLabel =
+    mode === 'edit'
+      ? 'Back to discussion'
+      : scopedProject
+        ? `Back to ${scopedProject.name} discussions`
+        : 'Back to discussions';
 
   return (
     <div className="max-w-3xl">
@@ -63,23 +90,52 @@ export function DiscussionForm(
             <span>{state.error}</span>
           </div>
         )}
-        <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="category">
-            Category
-          </label>
-          <select
-            id="category"
-            name="category"
-            required
-            defaultValue={initial?.category ?? 'qa'}
-            className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
-          >
-            {DISCUSSION_CATEGORY_ORDER.map(cat => (
-              <option key={cat} value={cat}>
-                {DISCUSSION_CATEGORY_ICONS[cat]} {DISCUSSION_CATEGORY_LABELS[cat]}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="category">
+              Category
+            </label>
+            <select
+              id="category"
+              name="category"
+              required
+              defaultValue={initial?.category ?? 'qa'}
+              className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
+            >
+              {DISCUSSION_CATEGORY_ORDER.map(cat => (
+                <option key={cat} value={cat}>
+                  {DISCUSSION_CATEGORY_ICONS[cat]} {DISCUSSION_CATEGORY_LABELS[cat]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="projectSlug">
+              Project <span className="text-fg-muted font-normal">(optional)</span>
+            </label>
+            {scopedProject ? (
+              <>
+                <input type="hidden" name="projectSlug" value={scopedProject.slug} />
+                <div className="w-full border border-border-default rounded-md px-3 py-2 text-sm bg-canvas-subtle text-fg-muted">
+                  {scopedProject.name}
+                </div>
+              </>
+            ) : (
+              <select
+                id="projectSlug"
+                name="projectSlug"
+                defaultValue={defaultProjectSlug}
+                className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
+              >
+                <option value="">Lab-wide (no project)</option>
+                {projects.map(p => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="title">

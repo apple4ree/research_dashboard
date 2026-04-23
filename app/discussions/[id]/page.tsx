@@ -1,11 +1,13 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { RepoIcon } from '@primer/octicons-react';
 import { MarkdownBody } from '@/components/md/MarkdownBody';
 import { Avatar } from '@/components/people/Avatar';
 import { EmptyState } from '@/components/misc/EmptyState';
 import { ReplyForm } from '@/components/discussions/ReplyForm';
 import { DiscussionActions } from '@/components/discussions/DiscussionActions';
 import { ReplyItem } from '@/components/discussions/ReplyItem';
-import { getDiscussionById, getAllMembers } from '@/lib/queries';
+import { getDiscussionById, getAllMembers, getProjectBySlug } from '@/lib/queries';
 
 export default async function DiscussionDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,6 +17,7 @@ export default async function DiscussionDetail({ params }: { params: Promise<{ i
   const allMembers = await getAllMembers();
   const memberMap = new Map(allMembers.map(m => [m.login, m]));
   const author = memberMap.get(d.authorLogin);
+  const project = d.projectSlug ? await getProjectBySlug(d.projectSlug) : undefined;
 
   return (
     <article className="max-w-3xl space-y-6">
@@ -23,9 +26,20 @@ export default async function DiscussionDetail({ params }: { params: Promise<{ i
           <h1 className="text-xl font-semibold flex-1">{d.title}</h1>
           <DiscussionActions discussionId={d.id} />
         </div>
-        <div className="text-xs text-fg-muted mt-2 flex items-center gap-2">
+        <div className="text-xs text-fg-muted mt-2 flex items-center gap-2 flex-wrap">
           <Avatar login={d.authorLogin} size={18} /> <b>{author?.displayName ?? d.authorLogin}</b>
           · {new Date(d.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+          {project && (
+            <>
+              <span>·</span>
+              <Link
+                href={`/projects/${project.slug}/discussions`}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-border-default hover:bg-canvas-subtle"
+              >
+                <RepoIcon size={10} /> {project.name}
+              </Link>
+            </>
+          )}
         </div>
       </header>
 

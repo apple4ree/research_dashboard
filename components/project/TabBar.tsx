@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookIcon, PlayIcon, FileIcon, DatabaseIcon, PeopleIcon } from '@primer/octicons-react';
+import { BookIcon, PlayIcon, FileIcon, DatabaseIcon, PeopleIcon, CommentDiscussionIcon } from '@primer/octicons-react';
 import { cn } from '@/lib/cn';
 
 const TABS = [
-  { key: 'overview',    label: 'Overview',    Icon: BookIcon,     href: '' },
-  { key: 'experiments', label: 'Experiments', Icon: PlayIcon,     href: '/experiments' },
-  { key: 'papers',      label: 'Papers',      Icon: FileIcon,     href: '/papers' },
-  { key: 'data',        label: 'Data',        Icon: DatabaseIcon, href: '/data' },
-  { key: 'members',     label: 'Members',     Icon: PeopleIcon,   href: '/members' },
+  { key: 'overview',    label: 'Overview',    Icon: BookIcon,               href: '' },
+  { key: 'experiments', label: 'Experiments', Icon: PlayIcon,               href: '/experiments' },
+  { key: 'papers',      label: 'Papers',      Icon: FileIcon,               href: '/papers' },
+  { key: 'data',        label: 'Data',        Icon: DatabaseIcon,           href: '/data' },
+  { key: 'discussions', label: 'Discussions', Icon: CommentDiscussionIcon,  href: '/discussions' },
+  { key: 'members',     label: 'Members',     Icon: PeopleIcon,             href: '/members' },
 ] as const;
 
 export function TabBar({ slug }: { slug: string }) {
