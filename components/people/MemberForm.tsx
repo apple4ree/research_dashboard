@@ -10,6 +10,7 @@ import {
   type UpdateMemberState,
 } from '@/lib/actions/members';
 import { MemberDeleteButton } from '@/components/people/MemberDeleteButton';
+import { PinnedProjectsPicker } from '@/components/people/PinnedProjectsPicker';
 import type { Member, MemberRole, Project } from '@/lib/types';
 
 const ROLE_OPTIONS: MemberRole[] = ['PI', 'Postdoc', 'PhD', 'MS', 'Intern', 'Alumni'];
@@ -34,7 +35,6 @@ export function MemberForm(
     null,
   );
 
-  const pinnedSet = new Set<string>(initial?.pinnedProjectSlugs ?? []);
 
   const backHref = mode === 'edit' ? `/members/${initial!.login}` : '/';
 
@@ -182,26 +182,10 @@ export function MemberForm(
             className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis resize-y"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="pinnedProjectSlugs">
-            Pinned projects{' '}
-            <span className="text-fg-muted font-normal">(Cmd/Ctrl-click to select multiple)</span>
-          </label>
-          <select
-            id="pinnedProjectSlugs"
-            name="pinnedProjectSlugs"
-            multiple
-            size={Math.min(8, Math.max(projects.length, 2))}
-            className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
-            defaultValue={projects.filter(p => pinnedSet.has(p.slug)).map(p => p.slug)}
-          >
-            {projects.map(p => (
-              <option key={p.slug} value={p.slug}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <PinnedProjectsPicker
+          allProjects={projects}
+          defaultPinned={initial?.pinnedProjectSlugs ?? []}
+        />
         <div className="flex items-center gap-2 pt-2">
           <button
             type="submit"
