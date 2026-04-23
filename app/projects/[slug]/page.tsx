@@ -11,13 +11,14 @@ import { TimelinePanel } from '@/components/journal/TimelinePanel';
 import { TodosPanel } from '@/components/journal/TodosPanel';
 import { JournalView } from '@/components/journal/JournalView';
 import { EmptyState } from '@/components/misc/EmptyState';
+import { MarkdownBody } from '@/components/md/MarkdownBody';
 
 export default async function ProjectOverview({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await loadProject(params);
+  const { slug, project } = await loadProject(params);
 
   const [entries, milestones, todos, papers, runs] = await Promise.all([
     getEntriesByProject(slug),
@@ -45,6 +46,12 @@ export default async function ProjectOverview({
           { label: 'target', value: targetVenue, tone: 'done' },
         ]}
       />
+
+      {project.readmeMarkdown && !hasJournal ? (
+        <section className="bg-white border border-border-default rounded-md p-6">
+          <MarkdownBody source={project.readmeMarkdown} />
+        </section>
+      ) : null}
 
       {hasJournal ? (
         <>
