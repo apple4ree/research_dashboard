@@ -79,10 +79,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, user }) {
       const u = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { memberLogin: true },
+        select: { memberLogin: true, email: true, image: true },
       });
-      if (u?.memberLogin) {
-        (session as { memberLogin?: string }).memberLogin = u.memberLogin;
+      let memberLogin = u?.memberLogin ?? null;
+
+      // Lazy backfill: the signIn callback runs BEFORE the PrismaAdapter
+      // creates the User row, so our prisma.user.update({ where: { id: user.id } })
+      // inside signIn silently no-ops for a brand-new user. Repair on first
+      // session read by matching by email (which signIn did backfill onto Member).
+      if (!memberLogin && u?.email) {
+        const member = await prisma.member.findFirst({
+          where: { email: u.email },
+        });
+        if (member) {
+          memberLogin = member.login;
+          await prisma.user
+            .update({ where: { id: user.id }, data: { memberLogin } })
+            .catch(() => {});
+          // Backfill avatar on Member if it was missing (defensive).
+          if (u.image) {
+            await prisma.member
+              .update({
+                where: { login: member.login },
+                data: { avatarUrl: u.image },
+              })
+              .catch(() => {});
+          }
+        }
+      }
+
+      if (memberLogin) {
+        (session as { memberLogin?: string }).memberLogin = memberLogin;
       }
       return session;
     },
