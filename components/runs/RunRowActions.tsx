@@ -5,7 +5,16 @@ import Link from 'next/link';
 import { PencilIcon, TrashIcon } from '@primer/octicons-react';
 import { deleteRunAction } from '@/lib/actions/runs';
 
-export function RunRowActions({ runId, projectSlug }: { runId: string; projectSlug: string }) {
+export function RunRowActions({
+  runId,
+  projectSlug,
+  onEdit,
+}: {
+  runId: string;
+  projectSlug: string;
+  /** When provided, Edit opens the slide-over instead of navigating to /edit. */
+  onEdit?: () => void;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,15 +38,29 @@ export function RunRowActions({ runId, projectSlug }: { runId: string; projectSl
     });
   };
 
+  const editClass =
+    'inline-flex items-center gap-1 px-2 h-7 border border-border-default rounded-md bg-canvas-subtle hover:bg-canvas-inset';
+
   return (
     <div className="flex items-center gap-1 text-xs">
-      <Link
-        href={`/projects/${projectSlug}/experiments/${runId}/edit`}
-        aria-label="Edit run"
-        className="inline-flex items-center gap-1 px-2 h-7 border border-border-default rounded-md bg-canvas-subtle hover:bg-canvas-inset"
-      >
-        <PencilIcon size={14} />
-      </Link>
+      {onEdit ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label="Edit run"
+          className={editClass}
+        >
+          <PencilIcon size={14} />
+        </button>
+      ) : (
+        <Link
+          href={`/projects/${projectSlug}/experiments/${runId}/edit`}
+          aria-label="Edit run"
+          className={editClass}
+        >
+          <PencilIcon size={14} />
+        </Link>
+      )}
       <button
         type="button"
         onClick={handleDelete}
