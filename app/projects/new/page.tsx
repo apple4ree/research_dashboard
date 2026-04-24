@@ -74,6 +74,19 @@ export default function NewProjectPage() {
             className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium mb-1" htmlFor="targetVenue">
+            Target venue <span className="text-fg-muted font-normal">(optional)</span>
+          </label>
+          <input
+            id="targetVenue"
+            name="targetVenue"
+            type="text"
+            placeholder="e.g., NeurIPS 2026"
+            className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
+          />
+          <p className="text-xs text-fg-muted mt-1">Shown as the &ldquo;target&rdquo; stat on the Overview tab. Can be changed later.</p>
+        </div>
         <div className="flex items-center gap-2">
           <input id="pinned" name="pinned" type="checkbox" className="accent-accent-emphasis" />
           <label htmlFor="pinned" className="text-sm">Pin on dashboard</label>

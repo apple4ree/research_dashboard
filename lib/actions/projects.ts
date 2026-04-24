@@ -29,6 +29,7 @@ export async function createProject(
   const tagsRaw = String(formData.get('tags') ?? '');
   const pinned = formData.get('pinned') === 'on';
   const slugRaw = String(formData.get('slug') ?? '').trim().toLowerCase();
+  const targetVenue = String(formData.get('targetVenue') ?? '').trim() || null;
 
   if (!name) return { error: 'Name is required.' };
   if (!description) return { error: 'Description is required.' };
@@ -62,6 +63,7 @@ export async function createProject(
       description,
       tags: JSON.stringify(tags),
       pinned,
+      targetVenue,
       createdAt: now,
       updatedAt: now,
       members: {
