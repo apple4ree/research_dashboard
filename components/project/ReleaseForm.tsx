@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { ArrowLeftIcon, AlertIcon } from '@primer/octicons-react';
 import {
   createReleaseAction,
@@ -22,10 +22,21 @@ type FormState = CreateReleaseState | UpdateReleaseState;
 
 export function ReleaseForm(
   props:
-    | { mode: 'create'; projectSlug: string }
-    | { mode: 'edit'; projectSlug: string; initial: Release },
+    | {
+        mode: 'create';
+        projectSlug: string;
+        onSuccess?: () => void;
+        onCancel?: () => void;
+      }
+    | {
+        mode: 'edit';
+        projectSlug: string;
+        initial: Release;
+        onSuccess?: () => void;
+        onCancel?: () => void;
+      },
 ) {
-  const { mode, projectSlug } = props;
+  const { mode, projectSlug, onSuccess, onCancel } = props;
   const initial = mode === 'edit' ? props.initial : undefined;
 
   const bound =
@@ -42,21 +53,36 @@ export function ReleaseForm(
     ? initial.publishedAt.slice(0, 10)
     : '';
 
+  const inPanel = Boolean(onSuccess);
+
+  useEffect(() => {
+    if (state?.ok && onSuccess) onSuccess();
+  }, [state, onSuccess]);
+
   return (
-    <div className="max-w-3xl">
-      <Link
-        href={`/projects/${projectSlug}/data`}
-        className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
-      >
-        <ArrowLeftIcon size={14} /> Back to data
-      </Link>
-      <h1 className="text-lg font-semibold mb-4">
-        {mode === 'create' ? 'New release' : 'Edit release'}
-      </h1>
+    <div className={inPanel ? '' : 'max-w-3xl'}>
+      {!inPanel && (
+        <>
+          <Link
+            href={`/projects/${projectSlug}/data`}
+            className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
+          >
+            <ArrowLeftIcon size={14} /> Back to data
+          </Link>
+          <h1 className="text-lg font-semibold mb-4">
+            {mode === 'create' ? 'New release' : 'Edit release'}
+          </h1>
+        </>
+      )}
       <form
         action={formAction}
-        className="space-y-4 bg-white border border-border-default rounded-md p-6"
+        className={
+          inPanel
+            ? 'space-y-4'
+            : 'space-y-4 bg-white border border-border-default rounded-md p-6'
+        }
       >
+        {inPanel && <input type="hidden" name="__noRedirect" value="1" />}
         {state?.error && (
           <div
             role="alert"
@@ -165,12 +191,22 @@ export function ReleaseForm(
                 ? 'Saving…'
                 : 'Save changes'}
           </button>
-          <Link
-            href={`/projects/${projectSlug}/data`}
-            className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
-          >
-            Cancel
-          </Link>
+          {onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
+            >
+              Cancel
+            </button>
+          ) : (
+            <Link
+              href={`/projects/${projectSlug}/data`}
+              className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
+            >
+              Cancel
+            </Link>
+          )}
         </div>
       </form>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { ArrowLeftIcon, AlertIcon } from '@primer/octicons-react';
 import {
   createRunAction,
@@ -28,11 +28,15 @@ export function RunCreateForm({
   members,
   defaultProjectSlug,
   scopedProjectSlug,
+  onSuccess,
+  onCancel,
 }: {
   projects: Project[];
   members: Member[];
   defaultProjectSlug?: string;
   scopedProjectSlug?: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }) {
   const [state, formAction, pending] = useActionState<CreateRunState, FormData>(
     createRunAction,
@@ -48,19 +52,34 @@ export function RunCreateForm({
     ? `Back to ${scopedProject.name} experiments`
     : 'Back to experiments';
 
+  const inPanel = Boolean(onSuccess);
+
+  useEffect(() => {
+    if (state?.ok && onSuccess) onSuccess();
+  }, [state, onSuccess]);
+
   return (
-    <div className="max-w-3xl">
-      <Link
-        href={backHref}
-        className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
-      >
-        <ArrowLeftIcon size={14} /> {backLabel}
-      </Link>
-      <h1 className="text-lg font-semibold mb-4">New run</h1>
+    <div className={inPanel ? '' : 'max-w-3xl'}>
+      {!inPanel && (
+        <>
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
+          >
+            <ArrowLeftIcon size={14} /> {backLabel}
+          </Link>
+          <h1 className="text-lg font-semibold mb-4">New run</h1>
+        </>
+      )}
       <form
         action={formAction}
-        className="space-y-4 bg-white border border-border-default rounded-md p-6"
+        className={
+          inPanel
+            ? 'space-y-4'
+            : 'space-y-4 bg-white border border-border-default rounded-md p-6'
+        }
       >
+        {inPanel && <input type="hidden" name="__noRedirect" value="1" />}
         {state?.error && (
           <div
             role="alert"
@@ -196,12 +215,22 @@ export function RunCreateForm({
           >
             {pending ? 'Creating…' : 'Create run'}
           </button>
-          <Link
-            href={backHref}
-            className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
-          >
-            Cancel
-          </Link>
+          {onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
+            >
+              Cancel
+            </button>
+          ) : (
+            <Link
+              href={backHref}
+              className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
+            >
+              Cancel
+            </Link>
+          )}
         </div>
       </form>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { ArrowLeftIcon, AlertIcon } from '@primer/octicons-react';
 import {
   updateRunAction,
@@ -9,7 +9,17 @@ import {
 } from '@/lib/actions/runs';
 import type { ExperimentRun } from '@/lib/types';
 
-export function RunEditForm({ run, projectSlug }: { run: ExperimentRun; projectSlug?: string }) {
+export function RunEditForm({
+  run,
+  projectSlug,
+  onSuccess,
+  onCancel,
+}: {
+  run: ExperimentRun;
+  projectSlug?: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}) {
   const slug = projectSlug ?? run.projectSlug;
   const backHref = `/projects/${slug}/experiments/${run.id}`;
   const bound = updateRunAction.bind(null, run.id);
@@ -18,19 +28,34 @@ export function RunEditForm({ run, projectSlug }: { run: ExperimentRun; projectS
     null,
   );
 
+  const inPanel = Boolean(onSuccess);
+
+  useEffect(() => {
+    if (state?.ok && onSuccess) onSuccess();
+  }, [state, onSuccess]);
+
   return (
-    <div className="max-w-2xl">
-      <Link
-        href={backHref}
-        className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
-      >
-        <ArrowLeftIcon size={14} /> Back to run
-      </Link>
-      <h1 className="text-lg font-semibold mb-4">Edit run</h1>
+    <div className={inPanel ? '' : 'max-w-2xl'}>
+      {!inPanel && (
+        <>
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
+          >
+            <ArrowLeftIcon size={14} /> Back to run
+          </Link>
+          <h1 className="text-lg font-semibold mb-4">Edit run</h1>
+        </>
+      )}
       <form
         action={formAction}
-        className="space-y-4 bg-white border border-border-default rounded-md p-6"
+        className={
+          inPanel
+            ? 'space-y-4'
+            : 'space-y-4 bg-white border border-border-default rounded-md p-6'
+        }
       >
+        {inPanel && <input type="hidden" name="__noRedirect" value="1" />}
         {state?.error && (
           <div
             role="alert"
@@ -73,12 +98,22 @@ export function RunEditForm({ run, projectSlug }: { run: ExperimentRun; projectS
           >
             {pending ? 'Saving…' : 'Save changes'}
           </button>
-          <Link
-            href={backHref}
-            className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
-          >
-            Cancel
-          </Link>
+          {onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
+            >
+              Cancel
+            </button>
+          ) : (
+            <Link
+              href={backHref}
+              className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
+            >
+              Cancel
+            </Link>
+          )}
         </div>
       </form>
     </div>
