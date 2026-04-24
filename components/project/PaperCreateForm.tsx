@@ -5,6 +5,7 @@ import { useActionState, useEffect } from 'react';
 import { ArrowLeftIcon, AlertIcon } from '@primer/octicons-react';
 import { createPaper, type CreatePaperState } from '@/lib/actions/papers';
 import { PAPER_STAGE_LABELS, PAPER_STAGE_ORDER } from '@/lib/labels';
+import { AuthorsPicker } from '@/components/people/AuthorsPicker';
 import type { Member } from '@/lib/types';
 
 export function PaperCreateForm({
@@ -111,25 +112,7 @@ export function PaperCreateForm({
             className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="authors">
-            Authors <span className="text-fg-muted font-normal">(Cmd/Ctrl-click to select multiple)</span>
-          </label>
-          <select
-            id="authors"
-            name="authors"
-            required
-            multiple
-            size={Math.min(8, Math.max(members.length, 2))}
-            className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
-          >
-            {members.map(m => (
-              <option key={m.login} value={m.login}>
-                {m.displayName} (@{m.login}) — {m.role}
-              </option>
-            ))}
-          </select>
-        </div>
+        <AuthorsPicker allMembers={members} required />
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="draftUrl">Draft URL (optional)</label>
           <input

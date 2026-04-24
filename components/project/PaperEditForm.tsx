@@ -8,6 +8,7 @@ import {
   type UpdatePaperState,
 } from '@/lib/actions/papers';
 import { PAPER_STAGE_LABELS, PAPER_STAGE_ORDER } from '@/lib/labels';
+import { AuthorsPicker } from '@/components/people/AuthorsPicker';
 import type { Paper, Member } from '@/lib/types';
 
 export function PaperEditForm({
@@ -27,7 +28,6 @@ export function PaperEditForm({
     null,
   );
 
-  const authorSet = new Set(paper.authorLogins);
   const deadlineDefault = paper.deadline
     ? paper.deadline.slice(0, 10)
     : '';
@@ -127,34 +127,11 @@ export function PaperEditForm({
             className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="authors">
-            Authors{' '}
-            <span className="text-fg-muted font-normal">
-              (Cmd/Ctrl-click to select multiple)
-            </span>
-          </label>
-          <select
-            id="authors"
-            name="authors"
-            required
-            multiple
-            size={Math.min(8, Math.max(members.length, 2))}
-            defaultValue={paper.authorLogins}
-            className="w-full border border-border-default rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-emphasis"
-          >
-            {members.map(m => (
-              <option
-                key={m.login}
-                value={m.login}
-                // defaultValue array handles selection, but keep explicit for a11y tests
-                {...(authorSet.has(m.login) ? { 'data-default-selected': 'true' } : {})}
-              >
-                {m.displayName} (@{m.login}) — {m.role}
-              </option>
-            ))}
-          </select>
-        </div>
+        <AuthorsPicker
+          allMembers={members}
+          defaultAuthors={paper.authorLogins}
+          required
+        />
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="draftUrl">
             Draft URL (optional)
