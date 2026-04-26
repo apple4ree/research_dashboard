@@ -166,3 +166,39 @@ test('GET /api/projects/:slug/entries: unknown slug → 404', async ({ request }
   expect(res.status()).toBe(404);
   expect((await res.json()).error).toBe('project_not_found');
 });
+
+test('GET /api/entries/:id: returns full detail with slides + artifacts', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      date: '2026-04-26',
+      type: 'meeting',
+      title: 'detail-me',
+      summary: 'with sub-rows',
+      bodyMarkdown: '## full body',
+      slides: [{ kind: 'metric', title: 's1', body: 'b1' }],
+      artifacts: [{ type: 'figure', title: 'a1', href: 'https://example.com/fig.png' }],
+    },
+  });
+  const { id } = await created.json();
+
+  const res = await request.get(`/api/entries/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  expect(res.status()).toBe(200);
+  const e = await res.json();
+  expect(e.id).toBe(id);
+  expect(e.bodyMarkdown).toBe('## full body');
+  expect(e.slides).toHaveLength(1);
+  expect(e.slides[0].kind).toBe('metric');
+  expect(e.artifacts).toHaveLength(1);
+});
+
+test('GET /api/entries/:id: missing id → 404 entry_not_found', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.get('/api/entries/e-does-not-exist', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('entry_not_found');
+});

@@ -8,6 +8,9 @@ export type ApiErrorCode =
   | 'invalid_request'
   | 'project_not_found'
   | 'run_not_found'
+  | 'entry_not_found'
+  | 'milestone_not_found'
+  | 'todo_not_found'
   | 'github_verify_failed';
 
 export function apiError(status: number, code: ApiErrorCode, hint?: string) {
