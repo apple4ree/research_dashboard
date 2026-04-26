@@ -584,6 +584,44 @@ export async function getEntryById(id: string): Promise<ResearchEntry | undefine
   return row ? mapEntry(row) : undefined;
 }
 
+export type EntryLight = {
+  id: string;
+  projectSlug: string;
+  date: string;
+  type: ResearchEntry['type'];
+  authorLogin: string;
+  title: string;
+  summary: string;
+  tags: string[];
+};
+
+export async function getEntriesLightByProject(slug: Slug): Promise<EntryLight[]> {
+  const rows = await prisma.researchEntry.findMany({
+    where: { projectSlug: slug },
+    orderBy: [{ date: 'desc' }, { id: 'desc' }],
+    select: {
+      id: true,
+      projectSlug: true,
+      date: true,
+      type: true,
+      authorLogin: true,
+      title: true,
+      summary: true,
+      tags: true,
+    },
+  });
+  return rows.map(r => ({
+    id: r.id,
+    projectSlug: r.projectSlug,
+    date: r.date.toISOString(),
+    type: r.type as ResearchEntry['type'],
+    authorLogin: r.authorLogin,
+    title: r.title,
+    summary: r.summary,
+    tags: JSON.parse(r.tags) as string[],
+  }));
+}
+
 export async function getMilestonesByProject(slug: Slug): Promise<Milestone[]> {
   const rows = await prisma.milestone.findMany({
     where: { projectSlug: slug },
