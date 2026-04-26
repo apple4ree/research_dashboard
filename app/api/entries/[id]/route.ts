@@ -70,12 +70,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     for (const s of body.slides) {
       if (!s || typeof s !== 'object') return apiError(400, 'invalid_request', 'each slide must be an object');
       if (!isSlideKind(s.kind)) return apiError(400, 'invalid_request', `invalid slide kind: ${s.kind}`);
+      if (typeof s.title !== 'string' || typeof s.body !== 'string') return apiError(400, 'invalid_request', 'slide.title and slide.body required');
     }
   }
   if (body.artifacts !== undefined) {
     for (const a of body.artifacts) {
       if (!a || typeof a !== 'object') return apiError(400, 'invalid_request', 'each artifact must be an object');
       if (!isArtifactType(a.type)) return apiError(400, 'invalid_request', `invalid artifact type: ${a.type}`);
+      if (typeof a.title !== 'string' || typeof a.href !== 'string') return apiError(400, 'invalid_request', 'artifact.title and artifact.href required');
     }
   }
 
