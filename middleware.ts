@@ -27,8 +27,12 @@ export default function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const isAuthRoute = pathname.startsWith('/auth/');
   const isAuthApi = pathname.startsWith('/api/auth/');
+  // Phase 1 skill API uses Bearer JWT, not NextAuth cookies. Cookie-based
+  // redirect doesn't apply — let the route handlers run their own auth gate
+  // (lib/api/bearer.ts) and return 401 JSON instead of a 307 to /auth/signin.
+  const isBearerApi = pathname === '/api/me' || pathname.startsWith('/api/runs');
 
-  if (isAuthRoute || isAuthApi) return NextResponse.next();
+  if (isAuthRoute || isAuthApi || isBearerApi) return NextResponse.next();
 
   if (!hasSessionCookie(req)) {
     const signInUrl = new URL('/auth/signin', req.nextUrl.origin);
