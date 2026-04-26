@@ -100,6 +100,9 @@ export type ExperimentEventAction = 'started' | 'succeeded' | 'failed' | 'cancel
 export type ReleaseEventAction = 'published';
 export type DiscussionEventAction = 'opened' | 'replied';
 export type ProjectEventAction = 'updated_readme' | 'created' | 'archived';
+export type EntryEventAction = 'created' | 'updated' | 'deleted';
+export type MilestoneEventAction = 'created' | 'updated' | 'deleted';
+export type TodoEventAction = 'created' | 'completed' | 'reopened' | 'updated' | 'deleted';
 
 export interface PaperEvent extends BaseEvent {
   type: 'paper';
@@ -122,7 +125,34 @@ export interface ProjectEvent extends BaseEvent {
   payload: { action: ProjectEventAction };
 }
 
-export type ActivityEvent = PaperEvent | ExperimentEvent | ReleaseEvent | DiscussionEvent | ProjectEvent;
+export interface EntryEvent {
+  id: string;
+  type: 'entry';
+  actorLogin: UserLogin;
+  projectSlug?: Slug;
+  createdAt: string;
+  payload: { entryId: string; action: EntryEventAction };
+}
+
+export interface MilestoneEvent {
+  id: string;
+  type: 'milestone';
+  actorLogin: UserLogin;
+  projectSlug?: Slug;
+  createdAt: string;
+  payload: { milestoneId: number; action: MilestoneEventAction };
+}
+
+export interface TodoEvent {
+  id: string;
+  type: 'todo';
+  actorLogin: UserLogin;
+  projectSlug?: Slug;
+  createdAt: string;
+  payload: { todoId: number; action: TodoEventAction };
+}
+
+export type ActivityEvent = PaperEvent | ExperimentEvent | ReleaseEvent | DiscussionEvent | ProjectEvent | EntryEvent | MilestoneEvent | TodoEvent;
 export type EventType = ActivityEvent['type'];
 
 export interface Venue {
