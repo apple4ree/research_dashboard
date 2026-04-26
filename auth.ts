@@ -3,6 +3,7 @@ import GitHub from 'next-auth/providers/github';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { prisma } from '@/lib/db';
 import type { PrismaClient } from '@/lib/generated/prisma/client';
+import { pickMemberLogin } from '@/lib/api/member-pick';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // PrismaAdapter expects the upstream @prisma/client shape; our generated
@@ -69,22 +70,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // the login PK — reject if we somehow got neither login nor email.
         if (!githubLogin) return false;
 
-        const normalizedLogin = githubLogin.toLowerCase().replace(/[^a-z0-9-]/g, '');
-        if (!normalizedLogin) return false;
-
-        // Pick a free Member.login. Prefer the GitHub handle; fall back to
-        // suffixed variants if it's already taken by someone else's row.
-        let candidate = normalizedLogin;
-        let suffix = 0;
-        while (await prisma.member.findUnique({ where: { login: candidate } })) {
-          suffix += 1;
-          candidate = `${normalizedLogin}-${suffix}`;
-          if (suffix > 50) return false; // pathological collision guard
-        }
+        const picked = await pickMemberLogin(githubLogin);
+        if (!picked.ok) return false;
 
         member = await prisma.member.create({
           data: {
-            login: candidate,
+            login: picked.login,
             displayName: user.name ?? githubLogin,
             role: 'PhD', // sensible default; user can change via /members/[login]/edit
             email: email ?? undefined,
