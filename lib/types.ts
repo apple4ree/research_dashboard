@@ -125,30 +125,18 @@ export interface ProjectEvent extends BaseEvent {
   payload: { action: ProjectEventAction };
 }
 
-export interface EntryEvent {
-  id: string;
+export interface EntryEvent extends BaseEvent {
   type: 'entry';
-  actorLogin: UserLogin;
-  projectSlug?: Slug;
-  createdAt: string;
   payload: { entryId: string; action: EntryEventAction };
 }
 
-export interface MilestoneEvent {
-  id: string;
+export interface MilestoneEvent extends BaseEvent {
   type: 'milestone';
-  actorLogin: UserLogin;
-  projectSlug?: Slug;
-  createdAt: string;
   payload: { milestoneId: number; action: MilestoneEventAction };
 }
 
-export interface TodoEvent {
-  id: string;
+export interface TodoEvent extends BaseEvent {
   type: 'todo';
-  actorLogin: UserLogin;
-  projectSlug?: Slug;
-  createdAt: string;
   payload: { todoId: number; action: TodoEventAction };
 }
 
