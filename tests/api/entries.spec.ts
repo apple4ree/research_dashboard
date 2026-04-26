@@ -202,3 +202,110 @@ test('GET /api/entries/:id: missing id → 404 entry_not_found', async ({ reques
   expect(res.status()).toBe(404);
   expect((await res.json()).error).toBe('entry_not_found');
 });
+
+test('PATCH /api/entries/:id: partial fields update, slides untouched', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      date: '2026-04-26',
+      type: 'meeting',
+      title: 'patch-target',
+      summary: 'before',
+      bodyMarkdown: 'before',
+      slides: [{ kind: 'discovery', title: 'keep', body: 'me' }],
+    },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/entries/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { title: 'patched-title', summary: 'after' },
+  });
+  expect(patched.status()).toBe(200);
+  const e = await patched.json();
+  expect(e.title).toBe('patched-title');
+  expect(e.summary).toBe('after');
+  expect(e.slides).toHaveLength(1);
+  expect(e.slides[0].title).toBe('keep');
+});
+
+test('PATCH /api/entries/:id: slides key present → wholesale replacement', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      date: '2026-04-26',
+      type: 'meeting',
+      title: 'replace-slides',
+      summary: 'x',
+      bodyMarkdown: 'x',
+      slides: [
+        { kind: 'discovery', title: 'old1', body: 'b' },
+        { kind: 'next', title: 'old2', body: 'b' },
+      ],
+    },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/entries/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { slides: [{ kind: 'metric', title: 'new', body: 'b' }] },
+  });
+  expect(patched.status()).toBe(200);
+  const e = await patched.json();
+  expect(e.slides).toHaveLength(1);
+  expect(e.slides[0].title).toBe('new');
+  expect(e.slides[0].kind).toBe('metric');
+});
+
+test('PATCH /api/entries/:id: empty slides array → all slides deleted', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      date: '2026-04-26',
+      type: 'meeting',
+      title: 'empty-slides',
+      summary: 'x',
+      bodyMarkdown: 'x',
+      slides: [{ kind: 'discovery', title: 'gone', body: 'b' }],
+    },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/entries/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { slides: [] },
+  });
+  expect(patched.status()).toBe(200);
+  const e = await patched.json();
+  expect(e.slides).toHaveLength(0);
+});
+
+test('PATCH /api/entries/:id: missing id → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.patch('/api/entries/e-nope', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { title: 'x' },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('entry_not_found');
+});
+
+test('PATCH /api/entries/:id: invalid type → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-04-26', type: 'meeting', title: 't', summary: 's', bodyMarkdown: 'b' },
+  });
+  const { id } = await created.json();
+  const res = await request.patch(`/api/entries/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { type: 'bogus' },
+  });
+  expect(res.status()).toBe(400);
+});
