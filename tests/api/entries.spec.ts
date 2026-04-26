@@ -309,3 +309,37 @@ test('PATCH /api/entries/:id: invalid type → 400', async ({ request }) => {
   });
   expect(res.status()).toBe(400);
 });
+
+test('DELETE /api/entries/:id: removes entry and cascades slides/artifacts', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      date: '2026-04-26',
+      type: 'meeting',
+      title: 'delete-me',
+      summary: 'x',
+      bodyMarkdown: 'x',
+      slides: [{ kind: 'discovery', title: 's', body: 'b' }],
+      artifacts: [{ type: 'notebook', title: 'a', href: 'https://example.com' }],
+    },
+  });
+  const { id } = await created.json();
+
+  const del = await request.delete(`/api/entries/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(del.status()).toBe(204);
+
+  const get = await request.get(`/api/entries/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  expect(get.status()).toBe(404);
+});
+
+test('DELETE /api/entries/:id: missing id → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.delete('/api/entries/e-nope', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+});

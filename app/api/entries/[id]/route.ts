@@ -129,3 +129,26 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const updated = await getEntryById(id);
   return NextResponse.json(updated);
 }
+
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const auth = await requireMemberFromBearer(req);
+  if (!auth.ok) return apiError(auth.status, auth.code);
+
+  const { id } = await ctx.params;
+  const existing = await prisma.researchEntry.findUnique({ where: { id } });
+  if (!existing) return apiError(404, 'entry_not_found', `Entry '${id}' not found.`);
+
+  await prisma.researchEntry.delete({ where: { id } });
+
+  await logActivity({
+    type: 'entry',
+    actorLogin: auth.memberLogin,
+    projectSlug: existing.projectSlug,
+    payload: { entryId: id, action: 'deleted' },
+  });
+
+  revalidatePath('/');
+  revalidatePath(`/projects/${existing.projectSlug}`);
+
+  return new NextResponse(null, { status: 204 });
+}
