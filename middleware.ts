@@ -30,7 +30,13 @@ export default function middleware(req: NextRequest) {
   // Phase 1 skill API uses Bearer JWT, not NextAuth cookies. Cookie-based
   // redirect doesn't apply — let the route handlers run their own auth gate
   // (lib/api/bearer.ts) and return 401 JSON instead of a 307 to /auth/signin.
-  const isBearerApi = pathname === '/api/me' || pathname.startsWith('/api/runs');
+  const isBearerApi =
+    pathname === '/api/me' ||
+    pathname.startsWith('/api/runs') ||
+    pathname.startsWith('/api/entries') ||
+    pathname.startsWith('/api/milestones') ||
+    pathname.startsWith('/api/todos') ||
+    /^\/api\/projects\/[^/]+\/(entries|milestones|todos)/.test(pathname);
 
   if (isAuthRoute || isAuthApi || isBearerApi) return NextResponse.next();
 

@@ -9,6 +9,9 @@ import type {
   ReleaseEventAction,
   DiscussionEventAction,
   ProjectEventAction,
+  EntryEventAction,
+  MilestoneEventAction,
+  TodoEventAction,
   UserLogin,
   Slug,
 } from '@/lib/types';
@@ -19,6 +22,9 @@ type PayloadFor<T extends EventType> =
   T extends 'release' ? { releaseId: string; action: ReleaseEventAction } :
   T extends 'discussion' ? { discussionId: string; action: DiscussionEventAction } :
   T extends 'project' ? { action: ProjectEventAction } :
+  T extends 'entry' ? { entryId: string; action: EntryEventAction } :
+  T extends 'milestone' ? { milestoneId: number; action: MilestoneEventAction } :
+  T extends 'todo' ? { todoId: number; action: TodoEventAction } :
   never;
 
 /**
