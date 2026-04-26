@@ -52,3 +52,52 @@ test('POST /api/runs: invalid status → 400', async ({ request }) => {
   });
   expect(res.status()).toBe(400);
 });
+
+test('PATCH /api/runs/:id: updates fields and logs activity on status change', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/runs', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { name: 'patch-target', projectSlug: FIXTURE_PROJECT, status: 'in_progress' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/runs/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { status: 'success', durationSec: 120, summary: 'final' },
+  });
+  expect(patched.status()).toBe(200);
+  const body = await patched.json();
+  expect(body.id).toBe(id);
+  expect(body.status).toBe('success');
+  expect(body.durationSec).toBe(120);
+  expect(body.summary).toBe('final');
+});
+
+test("PATCH /api/runs/:id: anyone can update anyone else's run", async ({ request }) => {
+  // testbot creates the run.
+  const tokenTestbot = await getToken(request, 'test:testbot');
+  const created = await request.post('/api/runs', {
+    headers: { Authorization: `Bearer ${tokenTestbot}` },
+    data: { name: 'cross-update', projectSlug: FIXTURE_PROJECT, status: 'in_progress' },
+  });
+  const { id } = await created.json();
+
+  // newuser cancels it — explicitly different identity, must still succeed.
+  const tokenOther = await getToken(request, 'test:newuser');
+  const patched = await request.patch(`/api/runs/${id}`, {
+    headers: { Authorization: `Bearer ${tokenOther}` },
+    data: { status: 'cancelled' },
+  });
+  expect(patched.status()).toBe(200);
+  expect((await patched.json()).status).toBe('cancelled');
+});
+
+test('PATCH /api/runs/:id: unknown id → 404 run_not_found', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.patch('/api/runs/exp-does-not-exist', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { status: 'cancelled' },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('run_not_found');
+});
