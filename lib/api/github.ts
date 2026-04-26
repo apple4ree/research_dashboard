@@ -6,7 +6,10 @@ export type GitHubUser = {
 };
 
 const TEST_FIXTURES: Record<string, GitHubUser> = {
-  'test:dgu': { login: 'dgu', name: 'Test DGU', email: 'dgu@test.local', avatarUrl: null },
+  // Matches Member.testbot guaranteed by tests/global-setup.ts.
+  'test:testbot': { login: 'testbot', name: 'Test Bot', email: 'bot@test.local', avatarUrl: null },
+  // Used to verify the auto-create path. Caller (test) is responsible
+  // for cleaning up the resulting Member row if it matters.
   'test:newuser': { login: 'newuser', name: 'New User', email: 'new@test.local', avatarUrl: null },
 };
 

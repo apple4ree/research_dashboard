@@ -28,6 +28,19 @@ async function globalSetup() {
       ).run('dgu', 'dgu', 'PhD', 'dgu', '[]');
     }
 
+    // Deterministic test member. The auth-flow spec relies on this row
+    // existing with githubLogin='testbot' so the "existing-member matched
+    // by githubLogin" path is reachable regardless of what prod data the
+    // dev DB already holds. Member.dgu.githubLogin can vary (real OAuth
+    // login on the dev/prod machine), so we don't reuse it for assertions.
+    const testbot = db.prepare('SELECT 1 FROM Member WHERE login = ?').get('testbot');
+    if (!testbot) {
+      db.prepare(
+        `INSERT INTO Member (login, displayName, role, githubLogin, pinnedProjectSlugs, source)
+         VALUES (?, ?, ?, ?, ?, 'internal')`,
+      ).run('testbot', 'Test Bot', 'PhD', 'testbot', '[]');
+    }
+
     const projectCount = (db.prepare('SELECT COUNT(*) as n FROM Project').get() as { n: number }).n;
     if (projectCount === 0) {
       const now = new Date().toISOString();
