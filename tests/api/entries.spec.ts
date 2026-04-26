@@ -125,3 +125,44 @@ test('POST /api/entries: invalid artifact type → 400', async ({ request }) => 
   });
   expect(res.status()).toBe(400);
 });
+
+test('GET /api/projects/:slug/entries: returns light list (no bodyMarkdown/slides/artifacts)', async ({ request }) => {
+  const token = await getToken(request);
+  // Ensure at least one entry exists.
+  await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      date: '2026-04-26',
+      type: 'meeting',
+      title: 'list-me',
+      summary: 'should appear in list',
+      bodyMarkdown: 'should be excluded from list',
+    },
+  });
+
+  const res = await request.get(`/api/projects/${FIXTURE_PROJECT}/entries`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(Array.isArray(body.entries)).toBe(true);
+  expect(body.entries.length).toBeGreaterThanOrEqual(1);
+  for (const e of body.entries) {
+    expect(typeof e.id).toBe('string');
+    expect(typeof e.title).toBe('string');
+    // Light shape — no bodyMarkdown, slides, or artifacts.
+    expect('bodyMarkdown' in e).toBe(false);
+    expect('slides' in e).toBe(false);
+    expect('artifacts' in e).toBe(false);
+  }
+});
+
+test('GET /api/projects/:slug/entries: unknown slug → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.get('/api/projects/no-such-project/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('project_not_found');
+});
