@@ -357,6 +357,24 @@ export async function getRecentEvents(limit: number = 20): Promise<ActivityEvent
   return rows.map(mapEvent);
 }
 
+/**
+ * Recent events scoped to a specific set of project slugs. Excludes events
+ * with no projectSlug (lab-wide announcements). Used by the dashboard's
+ * "mine" activity filter.
+ */
+export async function getRecentEventsForProjects(
+  projectSlugs: string[],
+  limit: number = 20,
+): Promise<ActivityEvent[]> {
+  if (projectSlugs.length === 0) return [];
+  const rows = await prisma.activityEvent.findMany({
+    where: { projectSlug: { in: projectSlugs } },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+  return rows.map(mapEvent);
+}
+
 export async function getDiscussionById(id: string): Promise<Discussion | undefined> {
   const row = await prisma.discussion.findUnique({
     where: { id },
