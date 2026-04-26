@@ -76,12 +76,16 @@ rm -f "$HOME/.config/labhub/token.json"
 ```
 
 Print: `✓ Logged out (token deleted).`
+The JWT remains valid until its `expiresAt`; this only removes the local copy. Anyone with the saved token (e.g., a backup) could still use it until it expires.
 
 ### `whoami`
 
 ```bash
-TOKEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$HOME/.config/labhub/token.json'))['token'])")
-curl -fsS "$LABHUB_URL/api/me" -H "Authorization: Bearer $TOKEN"
+TOKEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$HOME/.config/labhub/token.json','utf8'))['token'])")
+RESP=$(curl -fsS "$LABHUB_URL/api/me" -H "Authorization: Bearer $TOKEN")
+LOGIN=$(node -e "console.log(JSON.parse(process.argv[1]).login)" -- "$RESP")
+DISPLAY=$(node -e "console.log(JSON.parse(process.argv[1]).displayName)" -- "$RESP")
+ROLE=$(node -e "console.log(JSON.parse(process.argv[1]).role)" -- "$RESP")
 ```
 
 Print: `✓ Logged in as <displayName> (@<login>) — role: <role>`.
@@ -95,15 +99,19 @@ ask once: `"어느 프로젝트의 어떤 이름의 run인가요?"`. Don't guess
 Optional: `summary` (short text) and `durationSec` (rare for a starting
 run, but allowed).
 
+Construct the body with `node -e` so user text in `name`/`slug`/`summary`
+is JSON-escaped safely:
+
 ```bash
-TOKEN=$(...)  # as in whoami
+TOKEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$HOME/.config/labhub/token.json','utf8'))['token'])")
+BODY=$(node -e 'console.log(JSON.stringify({name:process.argv[1],projectSlug:process.argv[2],status:"in_progress",...(process.argv[3]?{summary:process.argv[3]}:{}),...(process.argv[4]?{durationSec:Number(process.argv[4])}:{})}))' -- "<name>" "<slug>" "<summary or empty>" "<durationSec or empty>")
 curl -fsS -X POST "$LABHUB_URL/api/runs" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d "{\"name\":\"<name>\",\"projectSlug\":\"<slug>\",\"status\":\"in_progress\"$OPT_SUMMARY}"
+  -d "$BODY"
 ```
 
-(Use `node -e` to construct the body if escaping gets messy; don't hand-build JSON with quotes that may include user text.)
+The actor (`triggeredByLogin`) is always the JWT holder. You cannot log a run on behalf of someone else — there is no API field for that.
 
 On 201 success, parse `id` from response and print:
 ```
@@ -119,8 +127,10 @@ Required: `id` (the run to update) and `status`.
 Optional: `durationSec`, `summary`.
 
 To resolve `id` when the user says "the run", "그 run", "it", "마지막 run":
-look in conversation history for the most recent `id` you parsed from a
-`run.start` response. If you can't find one, ask:
+look in the **current Claude Code conversation only** for the most recent
+`id` printed by a *successful* `run.start` (a `✓ Started exp-…` line you
+yourself printed in this conversation). If the conversation is fresh, the
+prior `run.start` failed, or no such line exists, ask:
 `"어느 run 인가요? id를 알려주세요 (예: exp-te35xn)"`.
 
 Status mapping (natural language → API value):
@@ -139,10 +149,11 @@ Duration mapping: parse natural language to seconds.
 - not mentioned → don't include `durationSec` in the body
 
 ```bash
+BODY=$(node -e 'const fields={};const a=process.argv;if(a[1])fields.status=a[1];if(a[2])fields.durationSec=Number(a[2]);if(a[3])fields.summary=a[3];console.log(JSON.stringify(fields))' -- "<status or empty>" "<durationSec or empty>" "<summary or empty>")
 curl -fsS -X PATCH "$LABHUB_URL/api/runs/<id>" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d "<json body with the fields the user provided>"
+  -d "$BODY"
 ```
 
 On 200, print:
