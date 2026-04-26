@@ -108,3 +108,20 @@ test('POST /api/entries: invalid slide kind → 400', async ({ request }) => {
   });
   expect(res.status()).toBe(400);
 });
+
+test('POST /api/entries: invalid artifact type → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.post('/api/entries', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      date: '2026-04-26',
+      type: 'meeting',
+      title: 'bad artifact',
+      summary: 'x',
+      bodyMarkdown: 'x',
+      artifacts: [{ type: 'nonsense', title: 't', href: 'https://example.com' }],
+    },
+  });
+  expect(res.status()).toBe(400);
+});
