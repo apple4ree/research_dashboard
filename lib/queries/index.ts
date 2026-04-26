@@ -282,6 +282,40 @@ export async function getPinnedProjects(): Promise<Project[]> {
   return rows.map(mapProject);
 }
 
+/**
+ * Projects relevant to a specific Member: union of (a) projects where they are
+ * a ProjectMember and (b) projects they have pinned on their profile.
+ * Used by the dashboard to show "my projects" instead of lab-wide pinned.
+ */
+export async function getProjectsForMember(login: UserLogin): Promise<Project[]> {
+  const member = await prisma.member.findUnique({
+    where: { login },
+    select: { pinnedProjectSlugs: true },
+  });
+
+  let pinnedSlugs: string[] = [];
+  if (member) {
+    try {
+      const parsed = JSON.parse(member.pinnedProjectSlugs);
+      if (Array.isArray(parsed)) pinnedSlugs = parsed.map(String);
+    } catch {
+      pinnedSlugs = [];
+    }
+  }
+
+  const rows = await prisma.project.findMany({
+    where: {
+      OR: [
+        { members: { some: { memberLogin: login } } },
+        { slug: { in: pinnedSlugs } },
+      ],
+    },
+    include: { members: true, repos: true, papers: true, releases: true },
+  });
+
+  return rows.map(mapProject);
+}
+
 export async function getPapersByProject(slug: Slug): Promise<Paper[]> {
   const rows = await prisma.paper.findMany({
     where: { projectSlug: slug },
@@ -317,6 +351,24 @@ export async function getUpcomingVenues(now: Date = new Date()): Promise<Venue[]
 
 export async function getRecentEvents(limit: number = 20): Promise<ActivityEvent[]> {
   const rows = await prisma.activityEvent.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+  return rows.map(mapEvent);
+}
+
+/**
+ * Recent events scoped to a specific set of project slugs. Excludes events
+ * with no projectSlug (lab-wide announcements). Used by the dashboard's
+ * "mine" activity filter.
+ */
+export async function getRecentEventsForProjects(
+  projectSlugs: string[],
+  limit: number = 20,
+): Promise<ActivityEvent[]> {
+  if (projectSlugs.length === 0) return [];
+  const rows = await prisma.activityEvent.findMany({
+    where: { projectSlug: { in: projectSlugs } },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
