@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "labhub",
+  "description": "Claude Code skill for the LabHub research dashboard.",
+  "owner": {
+    "name": "damilab"
+  },
+  "metadata": {
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "labhub",
+      "source": "./",
+      "description": "Log experiment runs to LabHub from chat. Wraps the LabHub REST API; authenticates via GitHub Device Flow.",
+      "version": "0.1.0",
+      "category": "research",
+      "skills": [
+        "./skills/labhub"
+      ]
+    }
+  ]
+}

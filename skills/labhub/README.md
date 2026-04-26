@@ -6,13 +6,24 @@ runs and authenticate via GitHub Device Flow without leaving your chat.
 
 ## Install
 
+The skill ships as a Claude Code plugin from this repo. Inside any Claude Code session:
+
+```
+/plugin marketplace add https://github.com/apple4ree/research_dashboard
+/plugin install labhub@labhub
+```
+
+After install, type `/labhub login` to start. Pull updates with `/plugin marketplace update labhub`.
+
+### Manual install (alternative, no marketplace)
+
+If you'd rather skip the marketplace plumbing:
+
 ```bash
-# From the research_dashboard repo root:
 cp -r skills/labhub ~/.claude/skills/
 ```
 
-That's it. Claude Code auto-discovers skills under `~/.claude/skills/`.
-Type `/labhub login` in any Claude Code session to start.
+Claude Code auto-discovers skills under `~/.claude/skills/`. Same behavior, no version tracking.
 
 ## Admin setup (one-time per LabHub deployment)
 
