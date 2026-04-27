@@ -460,10 +460,15 @@ export async function getAllVenues(): Promise<Venue[]> {
 // ============================================================================
 
 type EntryArtifactRow = {
+  id: number;
   type: string;
   title: string;
   href: string;
   position: number;
+  storedPath?: string | null;
+  originalFilename?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
 };
 
 type EntrySlideRow = {
@@ -492,9 +497,14 @@ type ResearchEntryRow = {
 
 function mapArtifact(row: EntryArtifactRow): EntryArtifact {
   return {
+    id: row.id,
     type: row.type as ArtifactType,
     title: row.title,
     href: row.href,
+    storedPath: row.storedPath ?? null,
+    originalFilename: row.originalFilename ?? null,
+    mimeType: row.mimeType ?? null,
+    sizeBytes: row.sizeBytes ?? null,
   };
 }
 

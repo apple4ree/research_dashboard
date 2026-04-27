@@ -7,6 +7,7 @@ import {
   LinkExternalIcon,
   PencilIcon,
   TrashIcon,
+  DownloadIcon,
 } from '@primer/octicons-react';
 import type { ResearchEntry, ArtifactType } from '@/lib/types';
 import { ENTRY_TYPE_LABELS, ENTRY_TYPE_TONE } from '@/lib/labels';
@@ -23,6 +24,27 @@ const ARTIFACT_ICON: Record<ArtifactType, string> = {
   doc: '📝',
   slide: '🎞',
 };
+
+/**
+ * Decide whether clicking an artifact should open the file in a new tab
+ * for viewing (vs always downloading). Stored uploads with viewable
+ * mime/extension get the inline preview treatment; external URL artifacts
+ * always just open the URL.
+ */
+function isInlineViewable(a: {
+  storedPath?: string | null;
+  mimeType?: string | null;
+  originalFilename?: string | null;
+}): boolean {
+  if (!a.storedPath) return true; // external URL — let the browser do whatever.
+  const mt = (a.mimeType ?? '').toLowerCase();
+  if (mt.startsWith('text/')) return true;
+  if (mt.startsWith('image/')) return true;
+  if (mt === 'application/pdf') return true;
+  if (mt === 'application/json') return true;
+  const name = (a.originalFilename ?? '').toLowerCase();
+  return /\.(md|html?|txt|json|csv|tsv|log|pdf|png|jpe?g|gif|webp|svg)$/.test(name);
+}
 
 type ChatMessage = { who: 'user' | 'ai'; text: string };
 
@@ -186,26 +208,57 @@ function EntryModalBody({
               {entry.artifacts.length === 0 && (
                 <p className="text-xs text-fg-muted">—</p>
               )}
-              {entry.artifacts.map((a, i) => (
-                <a
-                  key={i}
-                  href={a.href}
-                  className="block border border-border-default rounded-md p-3 hover:bg-canvas-subtle transition-colors"
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="text-xl">{ARTIFACT_ICON[a.type]}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-fg-default truncate">
-                        {a.title}
+              {entry.artifacts.map((a, i) => {
+                const stored = !!a.storedPath;
+                const inlineable = isInlineViewable(a);
+                // For stored uploads: inline=1 disposition for preview;
+                // download URL is the bare /api/uploads/<id> (default
+                // Content-Disposition: attachment).
+                const previewHref = stored && a.id
+                  ? `/api/uploads/${a.id}?inline=1`
+                  : a.href;
+                const downloadHref = stored && a.id
+                  ? `/api/uploads/${a.id}`
+                  : a.href;
+                return (
+                  <div
+                    key={i}
+                    className="flex items-stretch border border-border-default rounded-md hover:bg-canvas-subtle transition-colors overflow-hidden"
+                  >
+                    <a
+                      href={previewHref}
+                      target={inlineable ? '_blank' : undefined}
+                      rel={inlineable ? 'noopener noreferrer' : undefined}
+                      className="flex-1 min-w-0 p-3 flex items-start gap-2"
+                    >
+                      <div className="text-xl shrink-0">{ARTIFACT_ICON[a.type]}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-fg-default truncate">
+                          {a.title}
+                        </div>
+                        <div className="text-xs text-fg-muted">
+                          {a.type}
+                          {a.originalFilename ? ` · ${a.originalFilename}` : ''}
+                        </div>
                       </div>
-                      <div className="text-xs text-fg-muted">{a.type}</div>
-                    </div>
-                    <div className="text-fg-muted">
-                      <LinkExternalIcon size={12} />
-                    </div>
+                      <div className="text-fg-muted shrink-0 self-start mt-1">
+                        <LinkExternalIcon size={12} />
+                      </div>
+                    </a>
+                    {stored && (
+                      <a
+                        href={downloadHref}
+                        download={a.originalFilename ?? ''}
+                        aria-label={`Download ${a.title}`}
+                        title="Download"
+                        className="shrink-0 px-3 flex items-center border-l border-border-default text-fg-muted hover:text-accent-fg hover:bg-canvas-default"
+                      >
+                        <DownloadIcon size={14} />
+                      </a>
+                    )}
                   </div>
-                </a>
-              ))}
+                );
+              })}
             </div>
           </div>
           {/* Chatbot */}

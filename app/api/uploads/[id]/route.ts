@@ -6,8 +6,12 @@ import { absoluteStoredPath } from '@/lib/uploads';
 /**
  * Stream a stored entry artifact file. Auth is enforced by middleware
  * (cookie session), so reaching this handler means the caller is allowed.
+ *
+ * Query: `?inline=1` flips Content-Disposition from `attachment` (default,
+ * triggers a download) to `inline`, letting the browser render
+ * markdown/html/images/pdf in a new tab instead of saving them.
  */
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: idStr } = await ctx.params;
   const id = parseInt(idStr, 10);
   if (!Number.isFinite(id)) {
@@ -30,16 +34,24 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     return new NextResponse('file missing on disk', { status: 410 });
   }
 
-  // Reading into memory caps at 100MB per file (the upload limit), so
-  // streaming via Node ReadableStream isn't strictly required here.
+  const inline = req.nextUrl.searchParams.get('inline') === '1';
+
+  // Markdown lacks a registered IANA mime in some browsers and gets
+  // downloaded even with inline disposition; nudge it to text/plain so
+  // it just shows as text in the new tab.
+  const filename = artifact.originalFilename ?? 'file';
+  let contentType = artifact.mimeType ?? 'application/octet-stream';
+  if (inline && (contentType === 'text/markdown' || /\.md$/i.test(filename))) {
+    contentType = 'text/plain; charset=utf-8';
+  }
+
   const headers = new Headers();
-  headers.set('Content-Type', artifact.mimeType ?? 'application/octet-stream');
+  headers.set('Content-Type', contentType);
   headers.set(
     'Content-Disposition',
-    `attachment; filename*=UTF-8''${encodeURIComponent(artifact.originalFilename ?? 'file')}`,
+    `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(filename)}`,
   );
   headers.set('Content-Length', String(buf.byteLength));
-  // Don't let Cloudflare cache authenticated downloads.
   headers.set('Cache-Control', 'private, no-store');
 
   return new NextResponse(new Uint8Array(buf), { status: 200, headers });
