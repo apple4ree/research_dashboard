@@ -36,6 +36,7 @@ import {
   bucketLabel,
   eventTone,
 } from '@/components/flow/timeline-card';
+import { FlowEventDeleteButton } from '@/components/flow/FlowEventDeleteButton';
 import {
   createTaskAction,
   updateTaskAction,
@@ -489,14 +490,17 @@ function EventCardWithLinks({
     <div>
       <div className="relative">
         <TimelineCard event={event} />
-        {showEditAffordance && (
-          <Link
-            href={editHref}
-            aria-label="Edit event"
-            className="absolute top-2 right-2 text-fg-muted hover:text-accent-fg p-1.5 z-10 bg-white rounded shadow-sm border border-border-muted"
-          >
-            <PencilIcon size={14} />
-          </Link>
+        {showEditAffordance && eventId > 0 && (
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+            <Link
+              href={editHref}
+              aria-label="Edit event"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-fg-muted hover:text-accent-fg bg-white rounded shadow-sm border border-border-muted hover:border-accent-fg"
+            >
+              <PencilIcon size={12} /> 편집
+            </Link>
+            <FlowEventDeleteButton eventId={eventId} slug={slug} />
+          </div>
         )}
       </div>
       <div className="bg-canvas-subtle border border-border-muted border-t-0 rounded-b-md px-3 py-2 -mt-1">

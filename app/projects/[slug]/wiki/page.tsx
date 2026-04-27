@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { PencilIcon } from '@primer/octicons-react';
 import { prisma } from '@/lib/db';
 import { LabelChip } from '@/components/badges/LabelChip';
+import { WikiEntityDeleteButton } from '@/components/wiki/WikiEntityDeleteButton';
 import { statusTone } from '@/lib/wiki-status';
 
 // "New!" badge fades linearly over 72h from lastSyncedAt → returns 0..1.
@@ -88,7 +90,7 @@ export default async function ProjectWikiIndex({
                 {list.map(e => {
                   const newness = newnessFromDate(e.lastSyncedAt);
                   return (
-                  <li key={e.id}>
+                  <li key={e.id} className="relative group">
                     <Link
                       href={`/projects/${slug}/wiki/${encodeURIComponent(e.id)}`}
                       className="relative block bg-white rounded-md p-5 hover:bg-canvas-subtle transition-colors"
@@ -101,7 +103,7 @@ export default async function ProjectWikiIndex({
                           New!
                         </span>
                       )}
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 pr-20">
                         <span className="font-mono text-base font-semibold text-fg-default">{e.name}</span>
                         <LabelChip tone={statusTone(e.status)}>{e.status}</LabelChip>
                       </div>
@@ -111,6 +113,16 @@ export default async function ProjectWikiIndex({
                         </p>
                       )}
                     </Link>
+                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <Link
+                        href={`/projects/${slug}/wiki/${encodeURIComponent(e.id)}/edit`}
+                        aria-label={`Edit ${e.name}`}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-fg-muted hover:text-accent-fg bg-white rounded shadow-sm border border-border-muted hover:border-accent-fg"
+                      >
+                        <PencilIcon size={12} /> 편집
+                      </Link>
+                      <WikiEntityDeleteButton slug={slug} id={e.id} />
+                    </div>
                   </li>
                   );
                 })}
