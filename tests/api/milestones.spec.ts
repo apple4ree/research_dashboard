@@ -56,13 +56,14 @@ test('POST /api/milestones: explicit position respected', async ({ request }) =>
 
 test('GET /api/projects/:slug/milestones: returns array sorted by position', async ({ request }) => {
   const token = await getToken(request);
+  const tag = `list-${Date.now()}`;
   await request.post('/api/milestones', {
     headers: { Authorization: `Bearer ${token}` },
-    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-15', label: 'list-test-A', status: 'future', position: 100 },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-15', label: `${tag}-A`, status: 'future', position: 100 },
   });
   await request.post('/api/milestones', {
     headers: { Authorization: `Bearer ${token}` },
-    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-20', label: 'list-test-B', status: 'future', position: 101 },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-20', label: `${tag}-B`, status: 'future', position: 101 },
   });
 
   const res = await request.get(`/api/projects/${FIXTURE_PROJECT}/milestones`, {
@@ -71,9 +72,9 @@ test('GET /api/projects/:slug/milestones: returns array sorted by position', asy
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(Array.isArray(body.milestones)).toBe(true);
-  // Find our two by label and check ordering.
-  const a = body.milestones.findIndex((m: { label: string }) => m.label === 'list-test-A');
-  const b = body.milestones.findIndex((m: { label: string }) => m.label === 'list-test-B');
+  // Find our two by tag-prefixed label and check ordering.
+  const a = body.milestones.findIndex((m: { label: string }) => m.label === `${tag}-A`);
+  const b = body.milestones.findIndex((m: { label: string }) => m.label === `${tag}-B`);
   expect(a).toBeGreaterThanOrEqual(0);
   expect(b).toBeGreaterThan(a); // B has higher position, comes later
 });
@@ -88,6 +89,7 @@ test('GET /api/projects/:slug/milestones: unknown project → 404', async ({ req
 
 test('GET /api/projects/:slug/milestones: auto-position assigns increasing values', async ({ request }) => {
   const token = await getToken(request);
+  const tag = `auto-${Date.now()}`;
   // Fetch current count before, so we know the baseline.
   const before = await request.get(`/api/projects/${FIXTURE_PROJECT}/milestones`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -101,11 +103,11 @@ test('GET /api/projects/:slug/milestones: auto-position assigns increasing value
   // Create two milestones with no explicit position.
   const created1 = await request.post('/api/milestones', {
     headers: { Authorization: `Bearer ${token}` },
-    data: { projectSlug: FIXTURE_PROJECT, date: '2026-06-01', label: 'auto-A', status: 'future' },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-06-01', label: `${tag}-A`, status: 'future' },
   });
   const created2 = await request.post('/api/milestones', {
     headers: { Authorization: `Bearer ${token}` },
-    data: { projectSlug: FIXTURE_PROJECT, date: '2026-06-02', label: 'auto-B', status: 'future' },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-06-02', label: `${tag}-B`, status: 'future' },
   });
   expect(created1.status()).toBe(201);
   expect(created2.status()).toBe(201);
@@ -114,8 +116,8 @@ test('GET /api/projects/:slug/milestones: auto-position assigns increasing value
     headers: { Authorization: `Bearer ${token}` },
   });
   const afterBody = await after.json();
-  const a = afterBody.milestones.find((m: { label: string }) => m.label === 'auto-A');
-  const b = afterBody.milestones.find((m: { label: string }) => m.label === 'auto-B');
+  const a = afterBody.milestones.find((m: { label: string }) => m.label === `${tag}-A`);
+  const b = afterBody.milestones.find((m: { label: string }) => m.label === `${tag}-B`);
   expect(a).toBeTruthy();
   expect(b).toBeTruthy();
   expect(a.position).toBe(baselineMaxPos + 1);
