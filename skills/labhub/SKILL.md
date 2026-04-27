@@ -173,12 +173,16 @@ On 200, print:
 
 ### `entry.create`
 
-Required from user: `projectSlug`, `title`, and either `summary` or enough material to write one. If projectSlug or title missing, ask.
+**API-required fields** (the route returns 400 if missing — agent must always include all of them in the body):
+- `projectSlug` — ask user if not given
+- `title` — ask user if not given
+- `summary` — synthesize a 1-line summary from input if user didn't write one
+- `date` — agent defaults to today: `new Date().toISOString().slice(0,10)`
+- `type` — agent defaults to `meeting` unless content clearly indicates `report` / `experiment` / `review`
+- `bodyMarkdown` — agent constructs from input (can be `""` if minimal)
 
-Optional/inferred:
-- `date`: defaults to today (`new Date().toISOString().slice(0,10)`).
-- `type`: defaults to `meeting` unless content clearly indicates `report` / `experiment` / `review`.
-- `tags`: extract from content when obvious (e.g., "회의" → `meeting`).
+**Optional / agent-inferred fields:**
+- `tags`: array of strings; extract from content when obvious (e.g., "T-sweep" / "ablation").
 - `slides`: segment user's narrative into kind-tagged slides (`discovery` / `failure` / `implement` / `question` / `next` / `metric`).
 - `artifacts`: any URLs in the user's input → candidate artifacts. **Confirm with the user before sending arbitrary URLs as artifacts.**
 
@@ -208,8 +212,10 @@ Resolve `id` from conversation: most recent `e-…` printed by `entry.create` in
 Send only the fields the user wants to change. **If you include `slides` or `artifacts` keys, all existing slides/artifacts will be replaced** — only do this when the user explicitly asks to redo them.
 
 ```bash
-TOKEN=$(...)
-BODY=$(node -e '...build partial body from user input...')
+TOKEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$HOME/.config/labhub/token.json','utf8'))['token'])")
+# Construct a partial-update body containing only the keys the user wants changed.
+# Same JSON.stringify-via-node-e pattern as entry.create — feed user text via process.argv to avoid shell-escape pitfalls.
+BODY=$(node -e 'const fields={};const a=process.argv;if(a[1])fields.title=a[1];if(a[2])fields.summary=a[2];if(a[3])fields.bodyMarkdown=a[3];console.log(JSON.stringify(fields))' -- "<new title or empty>" "<new summary or empty>" "<new body or empty>")
 curl -fsS -X PATCH "$LABHUB_URL/api/entries/<id>" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
@@ -272,8 +278,9 @@ Print: `✓ Added milestone "<label>" (<status>, <date>) to <slug>`.
 Resolve id from conversation or ask. Send only changed fields.
 
 ```bash
-TOKEN=$(...)
-BODY=$(...)
+TOKEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$HOME/.config/labhub/token.json','utf8'))['token'])")
+# Same node -e JSON pattern as milestone.create. Send only the changed fields.
+BODY=$(node -e 'const fields={};const a=process.argv;if(a[1])fields.label=a[1];if(a[2])fields.status=a[2];if(a[3])fields.note=a[3];if(a[4])fields.date=a[4];console.log(JSON.stringify(fields))' -- "<new label or empty>" "<new status or empty>" "<new note or empty>" "<new date or empty>")
 curl -fsS -X PATCH "$LABHUB_URL/api/milestones/<id>" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
@@ -287,6 +294,8 @@ TOKEN=$(...)
 curl -fsS -X DELETE "$LABHUB_URL/api/milestones/<id>" \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+Print: `✓ Deleted milestone <id>`.
 
 ### `milestone.list`
 
@@ -329,16 +338,29 @@ Print: `✓ Added todo "<text>" (<bucket>) to <slug>`.
 
 Resolve id: only if **exactly one** todo was created in this conversation. Else ask which.
 
-Common case is done-toggle:
+NL mapping for the done state:
+- "done" / "완료" / "끝" / "마쳤어" → `{"done": true}`
+- "다시 열어" / "reopen" / "되살려" / "취소 done" → `{"done": false}`
+
+Common case (done-toggle):
 ```bash
 TOKEN=$(...)
 curl -fsS -X PATCH "$LABHUB_URL/api/todos/<id>" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"done":true}'
+  -d '{"done":true}'   # or {"done":false} for reopen
 ```
 
-Print: `✓ Marked "<text>" as done`.
+For other field changes (text, bucket, position), send only the changed key:
+```bash
+BODY=$(node -e 'const fields={};const a=process.argv;if(a[1])fields.text=a[1];if(a[2])fields.bucket=a[2];console.log(JSON.stringify(fields))' -- "<new text or empty>" "<new bucket or empty>")
+curl -fsS -X PATCH "$LABHUB_URL/api/todos/<id>" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "$BODY"
+```
+
+Print on done flip: `✓ Marked "<text>" as done` or `✓ Reopened "<text>"`. On other edits: `✓ Updated <id>`.
 
 ### `todo.delete`
 
@@ -347,6 +369,8 @@ TOKEN=$(...)
 curl -fsS -X DELETE "$LABHUB_URL/api/todos/<id>" \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+Print: `✓ Deleted todo <id>`.
 
 ### `todo.list`
 
