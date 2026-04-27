@@ -1,5 +1,7 @@
-// CLI for labhub-flow-ingest skill — performs all DB I/O so the skill itself
-// only does LLM extraction. Run from the LabHub repo root (uses prisma/dev.db).
+// Admin power tool — runs from the LabHub repo with direct DB access via
+// prisma/dev.db. The labhub-flow-ingest skill (V2) no longer calls this; it
+// goes through the HTTP API (POST /api/flow-events) instead. Kept usable for
+// one-shot admin ops on the server.
 //
 // Subcommands:
 //   get-project       --slug <slug>           → JSON project metadata + tasks + wikiTypes + ingestedSources
@@ -43,11 +45,9 @@ async function cmdGetProject(slug: string) {
   try {
     const project = await prisma.project.findUnique({ where: { slug } });
     if (!project) throw new Error(`project not found: ${slug}`);
-    if (!project.githubRepo) {
-      throw new Error(
-        `project "${slug}" has no githubRepo set. Set Project.githubRepo (e.g. "owner/repo") before ingest.`,
-      );
-    }
+    // V2: githubRepo is optional metadata — UI source preview only. Skill
+    // (HTTP-based) doesn't need it. CLI still walks <localPath>/progress, so
+    // localPath remains required here.
     if (!project.localPath) {
       throw new Error(
         `project "${slug}" has no localPath set. Set Project.localPath to the local git checkout path before ingest.`,
@@ -106,8 +106,8 @@ async function cmdListNewProgress(slug: string, force: boolean) {
   try {
     const project = await prisma.project.findUnique({ where: { slug } });
     if (!project) throw new Error(`project not found: ${slug}`);
-    if (!project.githubRepo || !project.localPath) {
-      throw new Error(`project "${slug}" needs githubRepo + localPath; set both before ingest`);
+    if (!project.localPath) {
+      throw new Error(`project "${slug}" has no localPath; set it before ingest`);
     }
 
     const progressRoot = path.join(project.localPath, 'progress');

@@ -1,16 +1,20 @@
 ---
 name: labhub-flow-ingest
 description: |
-  Pull progress markdown files from a research project's git checkout, run LLM
-  extraction, and populate LabHub Flow J view (FlowEvents + task links).
+  Walk a research project's local progress markdown, run LLM extraction, and
+  POST each event to LabHub Flow J view via the REST API. Pure HTTP — works
+  from any laptop with `/labhub login` done.
   Trigger: "labhub-flow-ingest <slug>", "flow ingest", "<slug>의 progress 정리해줘",
   "wiki ingest" (currently flow only — wiki is a separate phase).
 ---
 
-# labhub-flow-ingest
+# labhub-flow-ingest (V2)
 
-Auto-populate the LabHub Flow J view (`/projects/<slug>/flow`) from a project's
-git progress files. One project per invocation.
+Auto-populate the LabHub Flow J view (`/projects/<slug>/flow`) from progress
+files in your **local** working directory. One project per invocation.
+
+V2 is HTTP-only: no LabHub repo clone, no Prisma access, no `cd`. Authenticates
+with the same Bearer token that `/labhub login` mints.
 
 ## When to invoke
 
@@ -24,88 +28,81 @@ If they don't supply a slug, ask: `"어느 프로젝트의 progress를 ingest �
 ## Constants
 
 ```
-LABHUB_REPO  = /home/dgu/research_dashboard       (or $LABHUB_REPO env override)
-CLI          = $LABHUB_REPO/scripts/flow-ingest-cli.ts
-RUNNER       = pnpm tsx $CLI
+LABHUB_URL  = https://labhub.damilab.cc            (or $LABHUB_URL env override)
+TOKEN_FILE  = $HOME/.config/labhub/token.json      (set up by /labhub login)
 ```
 
-The CLI must run from `LABHUB_REPO` (it uses cwd-relative `prisma/dev.db`).
-Always `cd $LABHUB_REPO` before invoking.
+## Step 0 — Auth precheck
 
-## Hard requirements
+Read `$TOKEN_FILE`, JSON-parse, verify `expiresAt` (ISO string) is in the
+future. On any failure (missing file, parse error, expired) tell the user:
 
-- The project must have BOTH `Project.githubRepo` and `Project.localPath` set
-  in the LabHub DB. The CLI errors out otherwise — surface that to the user
-  with the SQL fix:
-  `UPDATE Project SET githubRepo='owner/repo', localPath='/abs/path' WHERE slug='<slug>'`.
+> "LabHub 토큰이 없거나 만료됐어요. `/labhub login` 먼저 실행해 주세요."
 
-## Procedure
+…and stop. Hold the JWT in `$TOKEN` for the rest of the run.
 
-### Step 1: get-project metadata
+## Step 1 — Project metadata (HTTP)
 
 ```bash
-cd $LABHUB_REPO
-pnpm tsx scripts/flow-ingest-cli.ts get-project --slug <SLUG>
+TOKEN=$(jq -r .token "$TOKEN_FILE")
+
+curl -fsSL -H "Authorization: Bearer $TOKEN" \
+  "$LABHUB_URL/api/projects/<SLUG>/todos"
+
+curl -fsSL -H "Authorization: Bearer $TOKEN" \
+  "$LABHUB_URL/api/projects/<SLUG>/flow-events"
 ```
 
-JSON output:
-- `project.localPath` — git checkout root.
-- `project.githubRepo` — `owner/repo`.
-- `tasks[]` — TodoItem rows (`id, bucket, title, goal, subtasks, status`). Used in
-  Step 4 for task mapping.
-- `wikiTypes[]` — informational in V1; ignore for flow ingest.
-- `ingestedSources[]` — already-processed progress filenames.
+- `/todos` → `{ todos: [{ id, bucket, title, goal, subtasks, status, ... }] }`.
+  Used in Step 3 for task mapping.
+- `/flow-events` → `{ events: [{ id, source, title, tone, position, date }] }`.
+  Extract the `source` strings, dedupe → `ingestedSources`.
 
-If the CLI errors with "githubRepo / localPath not set", stop and tell the user
-to fix it. Don't auto-set; that's an admin call.
+If either call returns 404 `project_not_found`, stop and tell the user the
+slug is wrong. If 401, the token expired mid-run — `/labhub login` again.
 
-### Step 2: git pull
+## Step 2 — Walk local progress dir
 
-```bash
-cd <project.localPath>
-git pull --ff-only
+From the user's current working directory, glob:
+
+```
+./progress/*/progress_*.md
 ```
 
-If this errors (non-ff, conflicts, network), stop and report. Don't try to
-recover automatically. After pulling, `cd $LABHUB_REPO` to be ready for CLI calls.
+Diff against `ingestedSources` (compare the **bare filename** — basename of the
+absolute path). Anything not in the set is a `newFile`.
 
-### Step 3: list-new-progress
+If `newFiles.length === 0`, tell the user "no new progress files since last
+ingest" and stop.
 
-```bash
-cd $LABHUB_REPO
-pnpm tsx scripts/flow-ingest-cli.ts list-new-progress --slug <SLUG>
-```
+> The skill never `git pull`s. The user manages their own checkout. If they
+> just edited a file and want it re-ingested, see "Re-running" below.
 
-Returns `{progressRoot, files: [{path, source, ingested}]}`. Without `--force`,
-only `ingested: false` files need processing.
+## Step 3 — Per file: extract → POST
 
-If `files.length === 0`, tell user "no new progress files since last ingest" and stop.
+For each `newFile`:
 
-### Step 4: per-file extract → apply
+### 3a. Read the markdown body
 
-For each file with `ingested: false`:
+Use the **Read tool** on the file's absolute path.
 
-#### 4a. Read the markdown body
+### 3b. Construct the apply payload
 
-Use the **Read tool** on `file.path` (absolute path from list-new-progress).
-
-#### 4b. Construct the apply payload
-
-Following the schema in `docs/progress-format.md` and the body markdown
-(`Context` / `Done` / `Numbers` / `Next` sections — all optional):
+Following `docs/progress-format.md` plus the body markdown sections
+(`Context` / `Done` / `Numbers` / `Next` — all optional):
 
 ```json
 {
   "projectSlug": "<SLUG>",
   "event": {
     "date": "<YYYY-MM-DD HH:mm — extract from filename or frontmatter>",
-    "source": "<file.source — bare filename>",
-    "title": "<≤30 chars; punchy summary; in result tone include the headline metric>",
+    "source": "<bare filename, e.g. progress_20260427_1400.md>",
+    "title": "<≤30 chars; punchy; results include the headline metric>",
     "summary": "<2-3 sentence what+why+result>",
     "tone": "milestone | result | pivot | design | incident",
     "bullets": ["<short fact 1>", "<short fact 2>"],
-    "numbers": [{"label": "<short metric name>", "value": "<value string>"}],
-    "tags": ["<theme-tag>", "<activity-tag>"]
+    "numbers": [{ "label": "<short metric>", "value": "<value string>" }],
+    "tags": ["<theme>", "<activity>"]
   },
   "taskIds": [13, 14, 16],
   "overwrite": false
@@ -126,82 +123,67 @@ Following the schema in `docs/progress-format.md` and the body markdown
 ("trigger_fake × MELON 0.305"). For a `pivot`, "X 폐기 → Y 설계" form.
 Korean / English mix is fine.
 
-**Bullets** — 0-5 short facts, usually from the file's `Done` / 결과 section.
-Omit (or empty array) if nothing fits.
+**Bullets** — 0-5 short facts from the file's `Done` / 결과 section. Omit
+(or empty array) if nothing fits.
 
-**Numbers** — 0-4 most important metrics, `{label, value}` shape. Skip if
-the progress has no numerical data.
+**Numbers** — 0-4 most important metrics, `{label, value}` shape. Skip if no
+numerical data.
 
-**Tags** — informational only in V1; skip if unsure.
+**Tags** — informational; skip if unsure.
 
-**taskIds** — compare progress against `tasks[]` from Step 1. Pick tasks the
-progress actually advances (`task.text` / `task.goal` / `task.subtasks` is
-mentioned or clearly implied in the body). 1-3 typical, occasionally 0 or
-more. **False positives are worse than false negatives** — drop ambiguous
-mappings.
+**taskIds** — compare against `todos[]` from Step 1. Pick tasks the progress
+actually advances (`title` / `goal` / `subtasks` is mentioned or clearly
+implied). 1-3 typical, occasionally 0. **False positives are worse than false
+negatives** — drop ambiguous mappings.
 
-#### 4c. Apply via CLI stdin
-
-```bash
-echo '<JSON>' | pnpm tsx scripts/flow-ingest-cli.ts apply
-```
-
-Or with heredoc:
+### 3c. POST to /api/flow-events
 
 ```bash
-pnpm tsx scripts/flow-ingest-cli.ts apply <<'EOF'
-{
-  "projectSlug": "...",
-  "event": { ... },
-  "taskIds": [...],
-  "overwrite": false
-}
+curl -sS -w '\n%{http_code}\n' \
+  -X POST "$LABHUB_URL/api/flow-events" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d @- <<'EOF'
+{ ...payload... }
 EOF
 ```
 
-Success → `{"ok": true, "eventId": <int>, "mode": "created", "taskLinks": <count>}`.
+Status-code handling:
 
-Failure → stderr message, non-zero exit. **Skip that file, continue with the
-next one**, summarize all failures at the end.
+- **201 `created`** — `{ ok, eventId, mode: 'created', taskLinks }`. Record and continue.
+- **200 `updated`** — overwrite path took. Same body shape. Record and continue.
+- **409 `event_already_exists`** — duplicate source without overwrite. Skip,
+  note, continue.
+- **400 `invalid_request`** — body has a problem (tone, taskIds). Read `hint`,
+  fix and retry once for that file. If still 400, skip and note.
+- **401** — token expired mid-run. Stop and ask user to `/labhub login`.
+- **404 `project_not_found`** — slug is wrong. Stop.
+- **5xx / network** — surface, skip the file, continue.
 
-### Step 5: Summary report
+## Step 4 — Summary report
 
-After processing all files, tell the user:
+After processing all files:
 
 ```
 ✓ Ingested <N>/<M> progress files into <SLUG>:
   - 2026-04-26 10:30  result    "trigger_fake × MELON 0.305"  → 2 tasks
   - 2026-04-27 14:00  design    "5종 ablation 라운드 설계"     → 1 task
   - 2026-04-27 16:00  incident  "YAML 파싱 버그"               → 0 tasks
-  ⨯ progress_20260427_2300.md  — apply failed: <reason>
+  ⨯ progress_20260427_2300.md  — POST failed: <reason>
 
-  https://labhub.damilab.cc/projects/<SLUG>/flow
+  $LABHUB_URL/projects/<SLUG>/flow
 ```
-
-## Failure modes
-
-| Symptom | Action |
-|---|---|
-| `get-project` says githubRepo / localPath missing | Tell user to set via UI or SQL; stop. |
-| `git pull` non-ff or conflicts | Show git output; ask user to resolve manually; stop. |
-| Empty `files[]` | "No new progress files." Stop. |
-| `apply` rejects tone | Re-pick tone, retry once. |
-| `apply` rejects taskIds | Drop the unknown ids, retry. |
-| `apply` says "already exists" without `--force` | The user re-running on the same file — skip and note. |
-| Network / DB / unknown error | Surface the message, stop, leave whatever's done done. |
 
 ## Re-running
 
-This skill is idempotent without `--force`: same progress files don't double-insert.
-If the user wants to re-process (e.g., they edited an old file), they can:
+This skill is idempotent: by default, same `source` returns 409 and is skipped.
 
-1. Pass `overwrite: true` in the apply payload for that single file, OR
-2. Manually delete the FlowEvent row in DB and re-invoke.
-
-V1 keeps re-runs simple: opt-in to overwrite on a per-file basis.
+If the user re-edited an old file and wants to overwrite, set `overwrite: true`
+in the payload for that one file. The server deletes prior same-source events
+(cascading task links) and inserts fresh.
 
 ## Cost notes
 
 - One progress file ≈ 5K tokens in the LLM step (body + tasks context).
 - 6 files ≈ 30K tokens, ~1-2 minutes wallclock.
-- Run within Claude Max plan; no extra API charge.
+- Runs within Claude Max plan; no extra API charge.
