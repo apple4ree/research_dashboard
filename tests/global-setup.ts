@@ -55,6 +55,15 @@ async function globalSetup() {
         `INSERT OR IGNORE INTO ProjectMember (projectSlug, memberLogin) VALUES (?, ?)`,
       ).run('phase1-test', 'dgu');
     }
+
+    // Wiki type fixtures for wiki-entities API tests. Two types let us check
+    // both type validation (against valid keys) and ordering by position.
+    const insertType = db.prepare(
+      `INSERT OR IGNORE INTO WikiType (projectSlug, key, label, position, description)
+       VALUES (?, ?, ?, ?, ?)`,
+    );
+    insertType.run('phase1-test', 'attack', 'Attacks', 0, 'Adversarial attack variants');
+    insertType.run('phase1-test', 'concept', 'Concepts', 1, 'Definitions and ideas');
   } finally {
     db.close();
   }

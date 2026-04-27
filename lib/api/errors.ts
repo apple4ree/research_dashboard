@@ -12,6 +12,7 @@ export type ApiErrorCode =
   | 'milestone_not_found'
   | 'todo_not_found'
   | 'event_already_exists'
+  | 'entity_not_found'
   | 'github_verify_failed';
 
 export function apiError(status: number, code: ApiErrorCode, hint?: string) {
