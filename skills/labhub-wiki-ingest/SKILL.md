@@ -144,11 +144,40 @@ curl -fsSL -H "Authorization: Bearer $TOKEN" \
   "$LABHUB_URL/api/projects/<SLUG>/wiki-entities/<id>"
 ```
 Get the full entity. **LLM step 2 (merge):** input = existing `bodyMarkdown`
-+ `newSnippet`. Output = revised `bodyMarkdown` (well-organized, no
-duplicates) + revised `summaryMarkdown` (1–2 sentence overview that absorbs
-new info).
++ `newSnippet` + currentFileStamp (e.g. `20260427_1400`). Output = revised
+`bodyMarkdown` and `summaryMarkdown`.
 
-Build payload:
+**Body must follow this skeleton** (preserve sections that already exist;
+add new sections only when needed):
+
+```markdown
+## Summary
+<2-3 sentence overview that absorbs the latest info>
+
+## Description
+<long-form explanation. Reorganize when new info clarifies something;
+collapse duplicates. Keep facts; don't speculate.>
+
+## Timeline
+- [progress:20260426_1030] 첫 정의: ... [variantA: 0.305]
+- [progress:20260427_1400] 후속 검증: ... [variantA: 0.418, variantB: 0.21]
+- [progress:20260428_1100] 모순되는 결과 — variantA 0.305 vs 0.418, 재현 필요
+
+## Cross-references (optional)
+- [entity:related_concept]
+```
+
+**Citation rules** (borrowed from llm-wiki-dami):
+- Every Timeline entry **must** start with `[progress:YYYYMMDD_HHMM]` derived
+  from the source filename (`progress_20260427_1400.md` → `20260427_1400`).
+- Cross-entity references use `[entity:<other-id>]`.
+- **Timeline is append-only.** When new info contradicts old, append a new
+  bullet noting the conflict — don't delete the old entry. The Description
+  + Summary may rewrite to reflect the latest understanding, but the
+  Timeline preserves the trail.
+- Don't speculate beyond the source.
+
+Build payload (sourceFiles dedupes):
 ```json
 {
   "projectSlug": "<SLUG>",
@@ -157,13 +186,15 @@ Build payload:
   "name": "<existing.name>",
   "status": "<existing.status>",
   "summaryMarkdown": "<merged summary>",
-  "bodyMarkdown": "<merged body>",
-  "sourceFiles": [<existing.sourceFiles>, "<currentFileBasename>"]   // dedupe
+  "bodyMarkdown": "<body following the skeleton above>",
+  "sourceFiles": [<existing.sourceFiles>, "<currentFileBasename>"]
 }
 ```
 
 #### New entity
-LLM already gave type/id/name/snippet. Build:
+LLM already gave type/id/name/snippet. Build the body using the same
+skeleton — Summary + Description + Timeline (with one initial entry citing
+the current progress file). Example:
 ```json
 {
   "projectSlug": "<SLUG>",
@@ -172,7 +203,7 @@ LLM already gave type/id/name/snippet. Build:
   "name": "<newEntity.name>",
   "status": "active",
   "summaryMarkdown": "<one-sentence summary derived from snippet>",
-  "bodyMarkdown": "<newEntity.snippet>",
+  "bodyMarkdown": "## Summary\n<…>\n\n## Description\n<…>\n\n## Timeline\n- [progress:<stamp>] 첫 등장: <…>\n",
   "sourceFiles": ["<currentFileBasename>"]
 }
 ```

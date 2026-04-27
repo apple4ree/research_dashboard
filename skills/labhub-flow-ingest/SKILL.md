@@ -136,6 +136,17 @@ actually advances (`title` / `goal` / `subtasks` is mentioned or clearly
 implied). 1-3 typical, occasionally 0. **False positives are worse than false
 negatives** — drop ambiguous mappings.
 
+**Citation discipline** (borrowed from llm-wiki-dami):
+- The `source` field is mandatory and must be the exact bare filename of the
+  progress file you read — never invent or reformat it. The dashboard uses
+  it both for dedupe and as the link from each event card back to its
+  source.
+- Bullets and summary must paraphrase what the file says; **don't speculate
+  beyond the source**. If the file is ambiguous, prefer a shorter bullet to
+  a confident-but-fabricated one.
+- Numbers must be quoted as written in the file (e.g. `"0.305"` not
+  `"30.5%"` unless the file used the percentage form).
+
 ### 3c. POST to /api/flow-events
 
 ```bash
