@@ -316,6 +316,12 @@ Milestones in <slug>:
 
 Required: `projectSlug`, `bucket`, `text`.
 
+**Optional fields** (skip if not given):
+- `goal` — one-line goal of the todo ("목표")
+- `subtasks` — array of strings; users say "with subtasks: A, B, C" or list them on separate lines
+- `status` — one of `pending` / `in_progress` / `done`. If user explicitly says "대기" / "pending" → `pending`; "끝" / "done" → `done`; otherwise omit (server defaults to `in_progress`).
+- `group` — free-form string; epic / project-area name for kanban sub-headers
+
 Bucket mapping:
 - "단기" / "short" / "이번 주" → `short`
 - "중기" / "mid" / "이번 달" → `mid`
@@ -324,8 +330,17 @@ Bucket mapping:
 If user says just "todo 추가: 데이터 정제 리팩터" without a bucket, default to `short`.
 
 ```bash
-TOKEN=$(...)
-BODY=$(node -e 'console.log(JSON.stringify({projectSlug:process.argv[1],bucket:process.argv[2],text:process.argv[3]}))' -- "<slug>" "<bucket>" "<text>")
+TOKEN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$HOME/.config/labhub/token.json','utf8'))['token'])")
+# Build the body with node -e so optional fields drop out cleanly when empty.
+BODY=$(node -e '
+  const a = process.argv;
+  const fields = { projectSlug: a[1], bucket: a[2], text: a[3] };
+  if (a[4]) fields.goal = a[4];
+  if (a[5]) fields.subtasks = a[5].split(",").map(s=>s.trim()).filter(Boolean);
+  if (a[6]) fields.status = a[6];
+  if (a[7]) fields.group = a[7];
+  console.log(JSON.stringify(fields));
+' -- "<slug>" "<bucket>" "<text>" "<goal or empty>" "<subtasks comma-separated or empty>" "<status or empty>" "<group or empty>")
 curl -fsS -X POST "$LABHUB_URL/api/todos" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
@@ -338,9 +353,11 @@ Print: `✓ Added todo "<text>" (<bucket>) to <slug>`.
 
 Resolve id: only if **exactly one** todo was created in this conversation. Else ask which.
 
-NL mapping for the done state:
-- "done" / "완료" / "끝" / "마쳤어" → `{"done": true}`
-- "다시 열어" / "reopen" / "되살려" / "취소 done" → `{"done": false}`
+NL mapping for the completion state. The server applies a status-wins sync rule, so either form below produces a coherent row — pick whichever matches the user's words:
+- "done" / "완료" / "끝" / "마쳤어" → `{"done": true}` (server sets `status="done"`)
+- "다시 열어" / "reopen" / "되살려" → `{"done": false}` (server sets `status="in_progress"`)
+- "pending" / "대기" / "보류" → `{"status": "pending"}` (server sets `done=false`)
+- "다시 시작" / "in progress" / "이어서" → `{"status": "in_progress"}`
 
 Common case (done-toggle):
 ```bash
@@ -351,9 +368,17 @@ curl -fsS -X PATCH "$LABHUB_URL/api/todos/<id>" \
   -d '{"done":true}'   # or {"done":false} for reopen
 ```
 
-For other field changes (text, bucket, position), send only the changed key:
+For richer field updates (text/bucket/goal/subtasks/group), send only the changed keys:
 ```bash
-BODY=$(node -e 'const fields={};const a=process.argv;if(a[1])fields.text=a[1];if(a[2])fields.bucket=a[2];console.log(JSON.stringify(fields))' -- "<new text or empty>" "<new bucket or empty>")
+BODY=$(node -e '
+  const a = process.argv; const fields = {};
+  if (a[1]) fields.text = a[1];
+  if (a[2]) fields.bucket = a[2];
+  if (a[3]) fields.goal = a[3];
+  if (a[4]) fields.subtasks = a[4].split(",").map(s=>s.trim()).filter(Boolean);
+  if (a[5]) fields.group = a[5];
+  console.log(JSON.stringify(fields));
+' -- "<new text or empty>" "<new bucket or empty>" "<new goal or empty>" "<new subtasks comma-separated or empty>" "<new group or empty>")
 curl -fsS -X PATCH "$LABHUB_URL/api/todos/<id>" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
