@@ -85,12 +85,20 @@ export function EntryCard({
             <NarrativeSlide key={i} slide={s} />
           ))}
         </div>
-        {/* Click zones */}
+        {/* Click zones — left/right 35% navigates the carousel, the middle
+            opens the entry modal so users can click the card body itself. */}
         <button
           type="button"
           aria-label="previous slide"
           onClick={() => goto(idx - 1)}
           className="absolute top-0 bottom-0 left-0 w-[35%] z-10 cursor-pointer"
+          tabIndex={-1}
+        />
+        <button
+          type="button"
+          aria-label="open entry"
+          onClick={() => onOpen(entry.id)}
+          className="absolute top-0 bottom-0 left-[35%] right-[35%] z-10 cursor-pointer"
           tabIndex={-1}
         />
         <button
@@ -112,20 +120,21 @@ export function EntryCard({
           </div>
         )}
       </div>
-      {/* Bottom bar */}
-      <div className="px-4 py-3 flex items-center justify-between bg-white border-t border-border-muted">
+      {/* Bottom bar — the whole bar opens the entry; the chip and "더보기"
+          arrow are visual hints rather than separate hit targets. */}
+      <button
+        type="button"
+        onClick={() => onOpen(entry.id)}
+        className="w-full px-4 py-3 flex items-center justify-between bg-white border-t border-border-muted text-left hover:bg-canvas-subtle transition-colors cursor-pointer"
+      >
         <div className="flex items-center gap-2">
           <LabelChip tone={typeTone}>{ENTRY_TYPE_LABELS[entry.type]}</LabelChip>
           <span className="text-xs text-fg-muted">{entry.date.slice(0, 10)}</span>
         </div>
-        <button
-          type="button"
-          onClick={() => onOpen(entry.id)}
-          className="text-xs text-accent-fg hover:underline font-medium"
-        >
+        <span className="text-xs text-accent-fg group-hover:underline font-medium">
           더보기 →
-        </button>
-      </div>
+        </span>
+      </button>
     </div>
   );
 }
