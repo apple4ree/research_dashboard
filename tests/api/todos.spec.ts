@@ -78,3 +78,81 @@ test('GET /api/projects/:slug/todos: unknown project → 404', async ({ request 
   });
   expect(res.status()).toBe(404);
 });
+
+test('PATCH /api/todos/:id: text update → 200', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'before' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { text: 'after' },
+  });
+  expect(patched.status()).toBe(200);
+  expect((await patched.json()).text).toBe('after');
+});
+
+test('PATCH /api/todos/:id: done toggle to true → 200', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'finish-me' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { done: true },
+  });
+  expect(patched.status()).toBe(200);
+  expect((await patched.json()).done).toBe(true);
+});
+
+test('PATCH /api/todos/:id: missing id → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.patch('/api/todos/999999', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { text: 'x' },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('todo_not_found');
+});
+
+test('PATCH /api/todos/:id: invalid bucket → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'bucket-test' },
+  });
+  const { id } = await created.json();
+  const res = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { bucket: 'bogus' },
+  });
+  expect(res.status()).toBe(400);
+});
+
+test('DELETE /api/todos/:id: → 204', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'delete-me' },
+  });
+  const { id } = await created.json();
+
+  const res = await request.delete(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(204);
+});
+
+test('DELETE /api/todos/:id: missing id → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.delete('/api/todos/999999', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+});
