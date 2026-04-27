@@ -101,6 +101,54 @@ async function cmdGetProject(slug: string) {
   }
 }
 
+async function cmdListNewProgress(slug: string, force: boolean) {
+  const prisma = newPrisma();
+  try {
+    const project = await prisma.project.findUnique({ where: { slug } });
+    if (!project) throw new Error(`project not found: ${slug}`);
+    if (!project.githubRepo || !project.localPath) {
+      throw new Error(`project "${slug}" needs githubRepo + localPath; set both before ingest`);
+    }
+
+    const progressRoot = path.join(project.localPath, 'progress');
+    const ingested = new Set<string>(
+      force
+        ? []
+        : (
+            await prisma.flowEvent.findMany({
+              where: { projectSlug: slug },
+              select: { source: true },
+              distinct: ['source'],
+            })
+          ).map(e => e.source),
+    );
+
+    const fs = await import('node:fs/promises');
+    const files: { path: string; source: string; ingested: boolean }[] = [];
+    let researcherDirs: string[] = [];
+    try {
+      researcherDirs = await fs.readdir(progressRoot);
+    } catch {
+      console.log(JSON.stringify({ progressRoot, files: [] }, null, 2));
+      return;
+    }
+    for (const d of researcherDirs) {
+      const sub = path.join(progressRoot, d);
+      const stat = await fs.stat(sub).catch(() => null);
+      if (!stat?.isDirectory()) continue;
+      const entries = await fs.readdir(sub);
+      for (const f of entries) {
+        if (!/^progress_.*\.md$/.test(f)) continue;
+        files.push({ path: path.join(sub, f), source: f, ingested: ingested.has(f) });
+      }
+    }
+    files.sort((a, b) => a.source.localeCompare(b.source));
+    console.log(JSON.stringify({ progressRoot, files }, null, 2));
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function main() {
   const { sub, flags } = parseArgs(process.argv);
   switch (sub) {
@@ -108,6 +156,12 @@ async function main() {
       const slug = String(flags.slug ?? '');
       if (!slug) throw new Error('get-project: --slug required');
       await cmdGetProject(slug);
+      return;
+    }
+    case 'list-new-progress': {
+      const slug = String(flags.slug ?? '');
+      if (!slug) throw new Error('list-new-progress: --slug required');
+      await cmdListNewProgress(slug, Boolean(flags.force));
       return;
     }
     default:

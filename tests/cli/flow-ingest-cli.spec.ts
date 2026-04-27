@@ -79,3 +79,83 @@ test('get-project: errors when localPath unset', async () => {
   expect(code).not.toBe(0);
   expect(stderr).toMatch(/localPath/);
 });
+
+test('list-new-progress: walks <localPath>/progress/<researcher>/progress_*.md', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+
+  const subDir = path.join(tmpDir, 'progress', 'dgu');
+  await fs.mkdir(subDir, { recursive: true });
+  await fs.writeFile(path.join(subDir, 'progress_20260427_1400.md'), '# test', 'utf8');
+  await fs.writeFile(path.join(subDir, 'progress_20260427_1500.md'), '# test', 'utf8');
+  await fs.writeFile(path.join(subDir, 'not-progress.md'), '# ignore me', 'utf8');
+
+  const { stdout } = runCli(`list-new-progress --slug ${FIXTURE_SLUG}`);
+  const result = JSON.parse(stdout);
+
+  expect(result.progressRoot).toBe(path.join(tmpDir, 'progress'));
+  expect(result.files.length).toBe(2);
+  expect(result.files.every((f: { ingested: boolean }) => f.ingested === false)).toBe(true);
+  expect(result.files.map((f: { source: string }) => f.source).sort()).toEqual([
+    'progress_20260427_1400.md', 'progress_20260427_1500.md',
+  ]);
+
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
+
+test('list-new-progress: marks files matching FlowEvent.source as ingested', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+
+  const subDir = path.join(tmpDir, 'progress', 'dgu');
+  await fs.mkdir(subDir, { recursive: true });
+  const sourceName = `progress_${Date.now()}_2000.md`;
+  await fs.writeFile(path.join(subDir, sourceName), '# test', 'utf8');
+
+  const db = new Database(DB_PATH);
+  db.prepare(`INSERT INTO FlowEvent (projectSlug, date, source, title, summary, tone, position)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run(FIXTURE_SLUG, '2026-04-27 20:00', sourceName, 'pre-existing', 'fixture', 'milestone', 0);
+  db.close();
+
+  const { stdout } = runCli(`list-new-progress --slug ${FIXTURE_SLUG}`);
+  const result = JSON.parse(stdout);
+
+  const f = result.files.find((x: { source: string }) => x.source === sourceName);
+  expect(f).toBeTruthy();
+  expect(f.ingested).toBe(true);
+
+  const cleanup = new Database(DB_PATH);
+  cleanup.prepare(`DELETE FROM FlowEvent WHERE projectSlug=? AND source=?`)
+    .run(FIXTURE_SLUG, sourceName);
+  cleanup.close();
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
+
+test('list-new-progress: --force marks all files as not-ingested', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+
+  const subDir = path.join(tmpDir, 'progress', 'dgu');
+  await fs.mkdir(subDir, { recursive: true });
+  const sourceName = `progress_${Date.now()}_2100.md`;
+  await fs.writeFile(path.join(subDir, sourceName), '# test', 'utf8');
+
+  const db = new Database(DB_PATH);
+  db.prepare(`INSERT INTO FlowEvent (projectSlug, date, source, title, summary, tone, position)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run(FIXTURE_SLUG, '2026-04-27 21:00', sourceName, 'force-test', 'fixture', 'milestone', 0);
+  db.close();
+
+  const { stdout } = runCli(`list-new-progress --slug ${FIXTURE_SLUG} --force`);
+  const result = JSON.parse(stdout);
+  const f = result.files.find((x: { source: string }) => x.source === sourceName);
+  expect(f).toBeTruthy();
+  expect(f.ingested).toBe(false);
+
+  const cleanup = new Database(DB_PATH);
+  cleanup.prepare(`DELETE FROM FlowEvent WHERE projectSlug=? AND source=?`)
+    .run(FIXTURE_SLUG, sourceName);
+  cleanup.close();
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
