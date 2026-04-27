@@ -53,3 +53,28 @@ test('POST /api/todos: minimal create → 201', async ({ request }) => {
   const body = await res.json();
   expect(typeof body.id).toBe('number');
 });
+
+test('GET /api/projects/:slug/todos: returns array', async ({ request }) => {
+  const token = await getToken(request);
+  const tag = `list-${Date.now()}`;
+  await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: `${tag}-todo` },
+  });
+
+  const res = await request.get(`/api/projects/${FIXTURE_PROJECT}/todos`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(Array.isArray(body.todos)).toBe(true);
+  expect(body.todos.some((t: { text: string }) => t.text === `${tag}-todo`)).toBe(true);
+});
+
+test('GET /api/projects/:slug/todos: unknown project → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.get('/api/projects/no-such/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+});

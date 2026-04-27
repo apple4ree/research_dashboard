@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { requireMemberFromBearer } from '@/lib/api/bearer';
 import { apiError } from '@/lib/api/errors';
 import { requireProject } from '@/lib/api/project';
-import { getMilestonesByProject } from '@/lib/queries';
+import { getTodosByProject } from '@/lib/queries';
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const auth = await requireMemberFromBearer(req);
@@ -12,6 +12,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const project = await requireProject(slug);
   if (!project.ok) return apiError(project.status, project.code, project.hint);
 
-  const milestones = await getMilestonesByProject(slug);
-  return NextResponse.json({ milestones });
+  const todos = await getTodosByProject(slug);
+  return NextResponse.json({ todos });
 }
