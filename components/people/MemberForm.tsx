@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState } from 'react';
-import { ArrowLeftIcon, AlertIcon } from '@primer/octicons-react';
+import { useActionState, useState } from 'react';
+import { ArrowLeftIcon, AlertIcon, XIcon } from '@primer/octicons-react';
 import {
   createMemberAction,
   updateMemberAction,
   type CreateMemberState,
   type UpdateMemberState,
 } from '@/lib/actions/members';
+import { Avatar } from '@/components/people/Avatar';
 import { MemberDeleteButton } from '@/components/people/MemberDeleteButton';
 import { PinnedProjectsPicker } from '@/components/people/PinnedProjectsPicker';
 import type { Member, MemberRole, Project } from '@/lib/types';
@@ -35,6 +36,34 @@ export function MemberForm(
     null,
   );
 
+  // Avatar state — only meaningful in edit mode.
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(initial?.avatarUrl ?? null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const onAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAvatarError(null);
+    const f = e.target.files?.[0] ?? null;
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|gif|webp)$/i.test(f.type)) {
+      setAvatarError('PNG / JPG / GIF / WebP만 지원합니다.');
+      e.target.value = '';
+      return;
+    }
+    if (f.size > 10 * 1024 * 1024) {
+      setAvatarError('10MB 이하로 올려주세요.');
+      e.target.value = '';
+      return;
+    }
+    setRemoveAvatar(false);
+    setAvatarPreview(URL.createObjectURL(f));
+  };
+
+  const onClickRemove = () => {
+    setRemoveAvatar(true);
+    setAvatarPreview(null);
+    setAvatarError(null);
+  };
 
   const backHref = mode === 'edit' ? `/members/${initial!.login}` : '/';
 
@@ -97,6 +126,52 @@ export function MemberForm(
               readOnly
               className="w-full border border-border-default rounded-md px-3 py-2 text-sm font-mono bg-canvas-subtle text-fg-muted cursor-not-allowed"
             />
+          </div>
+        )}
+        {mode === 'edit' && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Profile image</label>
+            <div className="flex items-start gap-4">
+              <div className="shrink-0">
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt={initial!.login}
+                    width={64}
+                    height={64}
+                    className="rounded-full object-cover"
+                    style={{ width: 64, height: 64 }}
+                  />
+                ) : (
+                  <Avatar login={initial!.login} size={64} />
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <input
+                  id="avatarFile"
+                  name="avatarFile"
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  onChange={onAvatarFileChange}
+                  className="block text-xs"
+                />
+                <p className="text-xs text-fg-muted">PNG / JPG / GIF / WebP, 최대 10MB. 기존 이미지는 자동으로 교체됩니다.</p>
+                {avatarError && <p className="text-xs text-danger-fg">{avatarError}</p>}
+                {(initial!.avatarUrl || avatarPreview) && (
+                  <button
+                    type="button"
+                    onClick={onClickRemove}
+                    className="inline-flex items-center gap-1 text-xs text-danger-fg hover:underline"
+                  >
+                    <XIcon size={12} /> 이미지 제거
+                  </button>
+                )}
+                {removeAvatar && (
+                  <p className="text-xs text-attention-fg">저장하면 프로필 이미지가 삭제됩니다.</p>
+                )}
+              </div>
+            </div>
+            <input type="hidden" name="removeAvatar" value={removeAvatar ? '1' : '0'} />
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

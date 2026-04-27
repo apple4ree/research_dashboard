@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { XIcon, PlusIcon, AlertIcon } from '@primer/octicons-react';
 import { Avatar } from '@/components/people/Avatar';
 import { LabelChip } from '@/components/badges/LabelChip';
@@ -20,27 +20,27 @@ export function ProjectMembersView({
   members: Member[];
   candidates: Member[];
 }) {
-  const [selectedLogin, setSelectedLogin] = useState(candidates[0]?.login ?? '');
+  const [pickedLogin, setPickedLogin] = useState(candidates[0]?.login ?? '');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   // After a successful add the server revalidates and a smaller candidates
-  // list arrives. Reset selection if the previously chosen login is gone,
-  // otherwise the <select> shows the first option but state still points
-  // at the just-added member, and subsequent Add clicks are no-ops.
-  useEffect(() => {
-    if (!candidates.find(c => c.login === selectedLogin)) {
-      setSelectedLogin(candidates[0]?.login ?? '');
-    }
-  }, [candidates, selectedLogin]);
+  // list arrives. The local state still holds the just-added login, so we
+  // derive the actually-rendered selection at render time: if the stored
+  // pick has fallen out of the candidates list, fall back to the first
+  // remaining option. Without this, the <select> shows the first option
+  // visually but submits the stale value, and subsequent Add clicks are
+  // silent no-ops.
+  const effectiveSelected =
+    candidates.find(c => c.login === pickedLogin)?.login ?? candidates[0]?.login ?? '';
 
   function onAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedLogin) return;
+    if (!effectiveSelected) return;
     setError(null);
     startTransition(async () => {
       try {
-        await addProjectMemberAction(projectSlug, selectedLogin);
+        await addProjectMemberAction(projectSlug, effectiveSelected);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to add member');
       }
@@ -79,8 +79,8 @@ export function ProjectMembersView({
           </label>
           <select
             id="addMemberLogin"
-            value={selectedLogin}
-            onChange={e => setSelectedLogin(e.target.value)}
+            value={effectiveSelected}
+            onChange={e => setPickedLogin(e.target.value)}
             className="text-sm border border-border-default rounded-md px-2 py-1.5"
           >
             {candidates.map(m => (
@@ -91,7 +91,7 @@ export function ProjectMembersView({
           </select>
           <button
             type="submit"
-            disabled={pending || !selectedLogin}
+            disabled={pending || !effectiveSelected}
             className="inline-flex items-center gap-1 text-sm px-3 h-8 rounded-md border border-border-default bg-canvas-subtle hover:bg-canvas-inset disabled:opacity-50"
           >
             <PlusIcon size={14} /> Add
@@ -120,7 +120,7 @@ export function ProjectMembersView({
               </button>
               <Link href={`/members/${m.login}`} className="block">
                 <div className="flex items-center gap-3">
-                  <Avatar login={m.login} size={40} />
+                  <Avatar login={m.login} avatarUrl={m.avatarUrl} size={40} />
                   <div>
                     <div className="font-semibold text-sm">{m.displayName}</div>
                     <div className="text-xs text-fg-muted">@{m.login}</div>

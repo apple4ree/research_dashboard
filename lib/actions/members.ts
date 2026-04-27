@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { writeAvatar, deleteAvatarFiles } from '@/lib/avatars';
 import type { MemberRole } from '@/lib/types';
 
 export type CreateMemberState = { error?: string } | null;
@@ -108,6 +109,24 @@ export async function updateMemberAction(
     }
   }
 
+  // Avatar handling: removeAvatar=1 clears, otherwise an attached file overwrites.
+  const removeAvatar = String(formData.get('removeAvatar') ?? '') === '1';
+  const avatarFileRaw = formData.get('avatarFile');
+  const avatarFile = avatarFileRaw instanceof File && avatarFileRaw.size > 0 ? avatarFileRaw : null;
+
+  let nextAvatarUrl: string | null | undefined = undefined; // undefined = no change
+  if (removeAvatar) {
+    await deleteAvatarFiles(login);
+    nextAvatarUrl = null;
+  } else if (avatarFile) {
+    try {
+      const result = await writeAvatar(login, avatarFile);
+      nextAvatarUrl = result.avatarUrl;
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Avatar upload failed.' };
+    }
+  }
+
   await prisma.member.update({
     where: { login },
     data: {
@@ -117,6 +136,7 @@ export async function updateMemberAction(
       email,
       githubLogin,
       pinnedProjectSlugs: JSON.stringify(pinnedSlugsRaw),
+      ...(nextAvatarUrl !== undefined ? { avatarUrl: nextAvatarUrl } : {}),
     },
   });
 

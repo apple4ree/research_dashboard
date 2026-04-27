@@ -17,7 +17,7 @@ export default async function MemberProfile({ params }: { params: Promise<{ logi
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <aside className="bg-white border border-border-default rounded-md p-4 text-center">
-        <div className="flex justify-center"><Avatar login={m.login} size={120} /></div>
+        <div className="flex justify-center"><Avatar login={m.login} avatarUrl={m.avatarUrl} size={120} /></div>
         <h1 className="text-lg font-semibold mt-3">{m.displayName}</h1>
         <div className="text-sm text-fg-muted">@{m.login}</div>
         <div className="mt-2"><LabelChip>{m.role}</LabelChip></div>
