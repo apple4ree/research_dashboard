@@ -30,6 +30,17 @@
       "skills": [
         "./"
       ]
+    },
+    {
+      "name": "labhub-wiki-ingest",
+      "source": "./skills/labhub-wiki-ingest",
+      "description": "Mirror a research project's progress files into LabHub Wiki entities. LLM-merge upsert: existing entities accumulate well-edited bodies, new entities are auto-created under existing WikiTypes. Pure HTTP via Bearer token.",
+      "version": "0.1.0",
+      "category": "research",
+      "strict": true,
+      "skills": [
+        "./"
+      ]
     }
   ]
 }
