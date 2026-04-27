@@ -203,7 +203,7 @@ function EditTaskForm({
         <form action={deleteTaskAction} className="contents">
           <input type="hidden" name="id" value={task.id} />
           <input type="hidden" name="projectSlug" value={slug} />
-          <input type="hidden" name="redirectTo" value={`/projects/${slug}/flow/j`} />
+          <input type="hidden" name="redirectTo" value={`/projects/${slug}/flow`} />
           <button
             type="submit"
             className="px-3 py-1 text-xs text-danger-fg border border-danger-fg/30 rounded hover:bg-danger-subtle inline-flex items-center gap-1"
@@ -645,7 +645,7 @@ export function TaskKanbanLive({
   editEventId?: number;
   editMode: boolean;
 }) {
-  const baseHref = `/projects/${slug}/flow/j`;
+  const baseHref = `/projects/${slug}/flow`;
   // Helper: build URL preserving the relevant state but flipping edit mode.
   function urlWithEdit(on: boolean): string {
     const params = new URLSearchParams();
