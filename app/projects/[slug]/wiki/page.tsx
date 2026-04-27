@@ -4,6 +4,7 @@ import { PencilIcon } from '@primer/octicons-react';
 import { prisma } from '@/lib/db';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { WikiEntityDeleteButton } from '@/components/wiki/WikiEntityDeleteButton';
+import { WikiTypesManager } from '@/components/wiki/WikiTypesManager';
 import { statusTone } from '@/lib/wiki-status';
 
 // "New!" badge fades linearly over 72h from lastSyncedAt → returns 0..1.
@@ -50,8 +51,15 @@ export default async function ProjectWikiIndex({
 
   if (types.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto py-6 text-sm text-fg-muted">
-        No wiki types configured for this project. Define wiki types in project settings to start.
+      <div className="max-w-5xl mx-auto py-2 space-y-6">
+        <header>
+          <h2 className="text-2xl font-semibold tracking-tight">Wiki</h2>
+          <p className="text-sm text-fg-muted mt-1">
+            아직 wiki type이 없습니다. 분류부터 정의해 주세요 (예: <code>attack</code>, <code>concept</code>).
+            정의 후 <code>labhub-wiki-ingest {slug}</code>로 ingest.
+          </p>
+        </header>
+        <WikiTypesManager slug={slug} types={[]} defaultOpen />
       </div>
     );
   }
@@ -74,6 +82,8 @@ export default async function ProjectWikiIndex({
           {lastSync && ` · last synced ${lastSync.toLocaleString('ko-KR')}`}
         </p>
       </header>
+
+      <WikiTypesManager slug={slug} types={types} />
 
       {types.map(t => {
         const list = byType.get(t.key) ?? [];
