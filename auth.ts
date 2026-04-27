@@ -134,6 +134,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       if (memberLogin) {
         (session as { memberLogin?: string }).memberLogin = memberLogin;
+        // If the member uploaded their own profile image, surface it via
+        // session.user.image so client components (AccountMenu, etc.) pick
+        // it up automatically. Falls back to the OAuth image otherwise.
+        const m = await prisma.member.findUnique({
+          where: { login: memberLogin },
+          select: { avatarUrl: true },
+        });
+        if (m?.avatarUrl && session.user) {
+          session.user.image = m.avatarUrl;
+        }
       }
       return session;
     },
