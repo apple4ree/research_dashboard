@@ -149,6 +149,129 @@ async function cmdListNewProgress(slug: string, force: boolean) {
   }
 }
 
+const ALLOWED_TONES = new Set(['milestone', 'pivot', 'result', 'incident', 'design']);
+
+type ApplyPayload = {
+  projectSlug: string;
+  event: {
+    date: string;
+    source: string;
+    title: string;
+    summary: string;
+    tone: string;
+    bullets?: string[];
+    numbers?: { label: string; value: string }[];
+    tags?: string[];
+  };
+  taskIds?: number[];
+  overwrite?: boolean;
+};
+
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+async function cmdApply(stdinJson: string) {
+  let payload: ApplyPayload;
+  try {
+    payload = JSON.parse(stdinJson);
+  } catch {
+    throw new Error('apply: stdin is not valid JSON');
+  }
+
+  const { projectSlug, event, taskIds = [], overwrite = false } = payload;
+  if (!projectSlug) throw new Error('apply: projectSlug required');
+  if (!event?.source) throw new Error('apply: event.source required');
+  if (!event.title) throw new Error('apply: event.title required');
+  if (!ALLOWED_TONES.has(event.tone)) {
+    throw new Error(
+      `apply: invalid tone "${event.tone}". Must be one of: ${[...ALLOWED_TONES].join(', ')}`,
+    );
+  }
+
+  const prisma = newPrisma();
+  try {
+    const project = await prisma.project.findUnique({ where: { slug: projectSlug } });
+    if (!project) throw new Error(`apply: project not found: ${projectSlug}`);
+    if (taskIds.length > 0) {
+      const found = await prisma.todoItem.findMany({
+        where: { projectSlug, id: { in: taskIds } },
+        select: { id: true },
+      });
+      const foundIds = new Set(found.map(t => t.id));
+      const missing = taskIds.filter(id => !foundIds.has(id));
+      if (missing.length > 0) {
+        throw new Error(`apply: taskIds not found in this project: ${missing.join(', ')}`);
+      }
+    }
+
+    const existingEvents = await prisma.flowEvent.findMany({
+      where: { projectSlug, source: event.source },
+      select: { id: true },
+    });
+
+    if (existingEvents.length > 0 && !overwrite) {
+      throw new Error(
+        `apply: event already exists for source "${event.source}". Pass overwrite:true to replace.`,
+      );
+    }
+
+    if (existingEvents.length > 0) {
+      // Overwrite: delete existing same-source events (cascades to their links).
+      await prisma.flowEvent.deleteMany({ where: { projectSlug, source: event.source } });
+    }
+
+    const max = await prisma.flowEvent.findFirst({
+      where: { projectSlug },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+    const saved = await prisma.flowEvent.create({
+      data: {
+        projectSlug,
+        date: event.date,
+        source: event.source,
+        title: event.title,
+        summary: event.summary,
+        tone: event.tone,
+        bullets: event.bullets ? JSON.stringify(event.bullets) : null,
+        numbers: event.numbers ? JSON.stringify(event.numbers) : null,
+        tags: event.tags ? JSON.stringify(event.tags) : null,
+        position: (max?.position ?? -1) + 1,
+      },
+    });
+
+    let linkCount = 0;
+    for (const tid of taskIds) {
+      try {
+        await prisma.flowEventTaskLink.create({
+          data: { projectSlug, flowEventId: saved.id, todoId: tid, source: 'llm' },
+        });
+        linkCount += 1;
+      } catch {
+        // unique constraint hit — already linked, ignore
+      }
+    }
+
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          eventId: saved.id,
+          mode: existingEvents.length > 0 ? 'updated' : 'created',
+          taskLinks: linkCount,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function main() {
   const { sub, flags } = parseArgs(process.argv);
   switch (sub) {
@@ -162,6 +285,11 @@ async function main() {
       const slug = String(flags.slug ?? '');
       if (!slug) throw new Error('list-new-progress: --slug required');
       await cmdListNewProgress(slug, Boolean(flags.force));
+      return;
+    }
+    case 'apply': {
+      const stdin = await readStdin();
+      await cmdApply(stdin);
       return;
     }
     default:

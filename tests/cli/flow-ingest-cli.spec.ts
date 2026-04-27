@@ -159,3 +159,126 @@ test('list-new-progress: --force marks all files as not-ingested', async () => {
   cleanup.close();
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
+
+function makeApplyPayload(opts: {
+  source?: string;
+  tone?: string;
+  taskIds?: number[];
+  overwrite?: boolean;
+} = {}): string {
+  return JSON.stringify({
+    projectSlug: FIXTURE_SLUG,
+    event: {
+      date: '2026-04-27 14:00',
+      source: opts.source ?? 'progress_20260427_1400.md',
+      title: 'apply test',
+      summary: 'fixture summary',
+      tone: opts.tone ?? 'milestone',
+      bullets: ['fact 1', 'fact 2'],
+      numbers: [{ label: 'metric', value: '0.5' }],
+      tags: ['tag-a'],
+    },
+    taskIds: opts.taskIds ?? [],
+    overwrite: opts.overwrite ?? false,
+  });
+}
+
+function cleanupEventsForSource(source: string) {
+  const db = new Database(DB_PATH);
+  db.prepare(`DELETE FROM FlowEvent WHERE projectSlug=? AND source=?`).run(FIXTURE_SLUG, source);
+  db.close();
+}
+
+test('apply: creates FlowEvent on happy path', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+  const source = `progress_apply_${Date.now()}.md`;
+
+  const { stdout } = runCli('apply', { stdin: makeApplyPayload({ source }) });
+  const result = JSON.parse(stdout);
+  expect(result.ok).toBe(true);
+  expect(typeof result.eventId).toBe('number');
+  expect(result.mode).toBe('created');
+  expect(result.taskLinks).toBe(0);
+
+  cleanupEventsForSource(source);
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
+
+test('apply: rejects invalid tone', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+  const { code, stderr } = runCli('apply', {
+    stdin: makeApplyPayload({ tone: 'bogus', source: `progress_tone_${Date.now()}.md` }),
+    expectFail: true,
+  });
+  expect(code).not.toBe(0);
+  expect(stderr).toMatch(/tone/);
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
+
+test('apply: duplicate source without overwrite → error', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+  const source = `progress_dup_${Date.now()}.md`;
+
+  runCli('apply', { stdin: makeApplyPayload({ source }) });
+  const { code, stderr } = runCli('apply', { stdin: makeApplyPayload({ source }), expectFail: true });
+  expect(code).not.toBe(0);
+  expect(stderr).toMatch(/already exists/);
+
+  cleanupEventsForSource(source);
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
+
+test('apply: overwrite=true replaces same-source events', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+  const source = `progress_over_${Date.now()}.md`;
+
+  runCli('apply', { stdin: makeApplyPayload({ source }) });
+  const { stdout } = runCli('apply', { stdin: makeApplyPayload({ source, overwrite: true }) });
+  const result = JSON.parse(stdout);
+  expect(result.ok).toBe(true);
+  expect(result.mode).toBe('updated');
+
+  const db = new Database(DB_PATH);
+  const rows = db.prepare(`SELECT id FROM FlowEvent WHERE projectSlug=? AND source=?`)
+    .all(FIXTURE_SLUG, source);
+  db.close();
+  expect(rows.length).toBe(1);
+
+  cleanupEventsForSource(source);
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
+
+test('apply: links to existing tasks; rejects unknown taskIds', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-ingest-test-'));
+  ensureFixtureProject(tmpDir);
+  const source = `progress_link_${Date.now()}.md`;
+
+  const db = new Database(DB_PATH);
+  const taskRow = db
+    .prepare(`INSERT INTO TodoItem (projectSlug, bucket, text, status, position) VALUES (?, ?, ?, ?, ?)`)
+    .run(FIXTURE_SLUG, 'short', 'fixture task for link', 'in_progress', 99);
+  const realId = Number(taskRow.lastInsertRowid);
+  db.close();
+
+  const { stdout } = runCli('apply', { stdin: makeApplyPayload({ source, taskIds: [realId] }) });
+  const result = JSON.parse(stdout);
+  expect(result.ok).toBe(true);
+  expect(result.taskLinks).toBe(1);
+
+  const { code, stderr } = runCli('apply', {
+    stdin: makeApplyPayload({ source: `${source}-2`, taskIds: [999999] }),
+    expectFail: true,
+  });
+  expect(code).not.toBe(0);
+  expect(stderr).toMatch(/not found/);
+
+  const cleanup = new Database(DB_PATH);
+  cleanup.prepare(`DELETE FROM TodoItem WHERE id=?`).run(realId);
+  cleanup.close();
+  cleanupEventsForSource(source);
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
