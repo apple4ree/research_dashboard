@@ -25,7 +25,6 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { cn } from '@/lib/cn';
-import { LabelChip, type LabelTone } from '@/components/badges/LabelChip';
 import { PencilIcon, PlusIcon, TrashIcon, XIcon } from '@primer/octicons-react';
 import {
   type FlowEvent,
@@ -35,8 +34,6 @@ import {
 import {
   TimelineCard,
   bucketLabel,
-  taskStatusTone,
-  taskStatusLabel,
   eventTone,
 } from '@/components/flow/timeline-card';
 import {
@@ -256,6 +253,7 @@ function DroppableGroupSection({
 
 function TaskCard({
   task,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   slug,
   isActive,
   selectHref,
@@ -429,7 +427,7 @@ function EventEditForm({
         />
       </div>
       <div>
-        <label className="block text-[11px] uppercase tracking-wider text-fg-muted font-semibold mb-1">Numbers (한 줄에 'label: value')</label>
+        <label className="block text-[11px] uppercase tracking-wider text-fg-muted font-semibold mb-1">Numbers (한 줄에 &apos;label: value&apos;)</label>
         <textarea
           name="numbers"
           rows={3}
