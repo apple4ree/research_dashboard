@@ -53,3 +53,71 @@ test('POST /api/milestones: explicit position respected', async ({ request }) =>
   });
   expect(res.status()).toBe(201);
 });
+
+test('GET /api/projects/:slug/milestones: returns array sorted by position', async ({ request }) => {
+  const token = await getToken(request);
+  await request.post('/api/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-15', label: 'list-test-A', status: 'future', position: 100 },
+  });
+  await request.post('/api/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-20', label: 'list-test-B', status: 'future', position: 101 },
+  });
+
+  const res = await request.get(`/api/projects/${FIXTURE_PROJECT}/milestones`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(Array.isArray(body.milestones)).toBe(true);
+  // Find our two by label and check ordering.
+  const a = body.milestones.findIndex((m: { label: string }) => m.label === 'list-test-A');
+  const b = body.milestones.findIndex((m: { label: string }) => m.label === 'list-test-B');
+  expect(a).toBeGreaterThanOrEqual(0);
+  expect(b).toBeGreaterThan(a); // B has higher position, comes later
+});
+
+test('GET /api/projects/:slug/milestones: unknown project → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.get('/api/projects/no-such/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+});
+
+test('GET /api/projects/:slug/milestones: auto-position assigns increasing values', async ({ request }) => {
+  const token = await getToken(request);
+  // Fetch current count before, so we know the baseline.
+  const before = await request.get(`/api/projects/${FIXTURE_PROJECT}/milestones`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const beforeBody = await before.json();
+  const baselineMaxPos = beforeBody.milestones.reduce(
+    (max: number, m: { position: number }) => Math.max(max, m.position),
+    -1,
+  );
+
+  // Create two milestones with no explicit position.
+  const created1 = await request.post('/api/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-06-01', label: 'auto-A', status: 'future' },
+  });
+  const created2 = await request.post('/api/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-06-02', label: 'auto-B', status: 'future' },
+  });
+  expect(created1.status()).toBe(201);
+  expect(created2.status()).toBe(201);
+
+  const after = await request.get(`/api/projects/${FIXTURE_PROJECT}/milestones`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const afterBody = await after.json();
+  const a = afterBody.milestones.find((m: { label: string }) => m.label === 'auto-A');
+  const b = afterBody.milestones.find((m: { label: string }) => m.label === 'auto-B');
+  expect(a).toBeTruthy();
+  expect(b).toBeTruthy();
+  expect(a.position).toBe(baselineMaxPos + 1);
+  expect(b.position).toBe(baselineMaxPos + 2);
+});
