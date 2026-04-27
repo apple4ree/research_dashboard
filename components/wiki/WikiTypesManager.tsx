@@ -88,63 +88,81 @@ function AddTypeForm({ slug }: { slug: string }) {
   const [key, setKey] = useState('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    if (!key.trim() || !label.trim()) {
+      setError('key와 label은 필수입니다.');
+      return;
+    }
+    if (!/^[a-z0-9_-]+$/.test(key.trim())) {
+      setError('key는 소문자/숫자/_/- 만 사용 가능');
+      return;
+    }
+    const fd = new FormData();
+    fd.set('projectSlug', slug);
+    fd.set('key', key.trim());
+    fd.set('label', label.trim());
+    fd.set('description', description.trim());
+    startTransition(async () => {
+      await addWikiTypeAction(fd);
+      setKey('');
+      setLabel('');
+      setDescription('');
+    });
+  };
 
   return (
-    <form
-      action={async (fd: FormData) => {
-        await addWikiTypeAction(fd);
-        setKey('');
-        setLabel('');
-        setDescription('');
-      }}
-      className="flex flex-wrap items-end gap-2"
-    >
-      <input type="hidden" name="projectSlug" value={slug} />
-      <div className="flex-1 min-w-[110px]">
-        <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
-          Key
-        </label>
-        <input
-          name="key"
-          required
-          value={key}
-          onChange={e => setKey(e.target.value)}
-          placeholder="attack"
-          pattern="[a-z0-9_-]+"
-          className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm font-mono"
-        />
+    <form onSubmit={onSubmit} className="space-y-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex-1 min-w-[110px]">
+          <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
+            Key
+          </label>
+          <input
+            required
+            value={key}
+            onChange={e => setKey(e.target.value)}
+            placeholder="attack"
+            pattern="[a-z0-9_-]+"
+            className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm font-mono"
+          />
+        </div>
+        <div className="flex-1 min-w-[150px]">
+          <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
+            Label
+          </label>
+          <input
+            required
+            value={label}
+            onChange={e => setLabel(e.target.value)}
+            placeholder="Attacks"
+            className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div className="flex-[2] min-w-[180px]">
+          <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
+            Description (optional)
+          </label>
+          <input
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="짧은 설명"
+            className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={pending}
+          className="px-3 py-1.5 text-sm bg-accent-fg text-white rounded hover:opacity-90 disabled:opacity-50"
+        >
+          {pending ? '추가 중…' : '추가'}
+        </button>
       </div>
-      <div className="flex-1 min-w-[150px]">
-        <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
-          Label
-        </label>
-        <input
-          name="label"
-          required
-          value={label}
-          onChange={e => setLabel(e.target.value)}
-          placeholder="Attacks"
-          className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm"
-        />
-      </div>
-      <div className="flex-[2] min-w-[180px]">
-        <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
-          Description (optional)
-        </label>
-        <input
-          name="description"
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          placeholder="짧은 설명"
-          className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm"
-        />
-      </div>
-      <button
-        type="submit"
-        className="px-3 py-1.5 text-sm bg-accent-fg text-white rounded hover:opacity-90"
-      >
-        추가
-      </button>
+      {error && <p className="text-xs text-danger-fg">{error}</p>}
     </form>
   );
 }
