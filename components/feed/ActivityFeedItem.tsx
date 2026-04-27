@@ -14,6 +14,8 @@ const toneByType = {
   entry: 'accent',
   milestone: 'attention',
   todo: 'done',
+  flow_event: 'accent',
+  wiki_entity: 'neutral',
 } as const;
 
 function paperVerb(action: PaperEventAction, version?: number): string {
@@ -67,6 +69,14 @@ function renderBody(e: ActivityEvent, ctx: EventContext) {
         e.payload.action === 'updated' ? 'edited a todo' :
         'removed a todo';
       return <span><b>{actor}</b> {verb}{projLink && <> in {projLink}</>}</span>;
+    }
+    case 'flow_event': {
+      const verb = e.payload.action === 'created' ? 'added' : e.payload.action === 'updated' ? 'edited' : 'removed';
+      return <span><b>{actor}</b> {verb} a flow event{projLink && <> in {projLink}</>}</span>;
+    }
+    case 'wiki_entity': {
+      const verb = e.payload.action === 'created' ? 'added' : e.payload.action === 'updated' ? 'edited' : 'removed';
+      return <span><b>{actor}</b> {verb} a wiki entity{projLink && <> in {projLink}</>}</span>;
     }
     default: {
       e satisfies never;

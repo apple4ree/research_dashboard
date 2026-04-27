@@ -103,6 +103,8 @@ export type ProjectEventAction = 'updated_readme' | 'created' | 'archived';
 export type EntryEventAction = 'created' | 'updated' | 'deleted';
 export type MilestoneEventAction = 'created' | 'updated' | 'deleted';
 export type TodoEventAction = 'created' | 'completed' | 'reopened' | 'updated' | 'deleted';
+export type FlowEventActivityAction = 'created' | 'updated' | 'deleted';
+export type WikiEntityEventAction = 'created' | 'updated' | 'deleted';
 
 export interface PaperEvent extends BaseEvent {
   type: 'paper';
@@ -140,7 +142,27 @@ export interface TodoEvent extends BaseEvent {
   payload: { todoId: number; action: TodoEventAction };
 }
 
-export type ActivityEvent = PaperEvent | ExperimentEvent | ReleaseEvent | DiscussionEvent | ProjectEvent | EntryEvent | MilestoneEvent | TodoEvent;
+export interface FlowEventActivity extends BaseEvent {
+  type: 'flow_event';
+  payload: { flowEventId: number; action: FlowEventActivityAction };
+}
+
+export interface WikiEntityEvent extends BaseEvent {
+  type: 'wiki_entity';
+  payload: { entityId: string; action: WikiEntityEventAction };
+}
+
+export type ActivityEvent =
+  | PaperEvent
+  | ExperimentEvent
+  | ReleaseEvent
+  | DiscussionEvent
+  | ProjectEvent
+  | EntryEvent
+  | MilestoneEvent
+  | TodoEvent
+  | FlowEventActivity
+  | WikiEntityEvent;
 export type EventType = ActivityEvent['type'];
 
 export interface Venue {

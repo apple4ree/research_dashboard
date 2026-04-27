@@ -1,8 +1,11 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { PencilIcon } from '@primer/octicons-react';
 import { prisma } from '@/lib/db';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { MarkdownBody } from '@/components/md/MarkdownBody';
 import { WikiSidebar } from '@/components/wiki/WikiSidebar';
+import { WikiEntityDeleteButton } from '@/components/wiki/WikiEntityDeleteButton';
 import { statusTone } from '@/lib/wiki-status';
 
 export default async function WikiEntityPage({
@@ -54,8 +57,19 @@ export default async function WikiEntityPage({
       </aside>
 
       <article className="max-w-3xl py-2">
-        <div className="text-xs text-fg-muted mb-6">
-          {type?.label ?? entity.type} · last synced {entity.lastSyncedAt.toLocaleString('ko-KR')}
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-xs text-fg-muted">
+            {type?.label ?? entity.type} · last synced {entity.lastSyncedAt.toLocaleString('ko-KR')}
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/projects/${slug}/wiki/${encodeURIComponent(entity.id)}/edit`}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border-default text-xs text-fg-muted hover:border-accent-fg hover:text-accent-fg transition-colors"
+            >
+              <PencilIcon size={12} /> 편집
+            </Link>
+            <WikiEntityDeleteButton slug={slug} id={entity.id} />
+          </div>
         </div>
 
         <header className="mb-6">

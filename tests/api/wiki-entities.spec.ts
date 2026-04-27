@@ -197,3 +197,121 @@ test('GET /api/projects/:slug/wiki-types: unknown project → 404', async ({ req
   expect(res.status()).toBe(404);
   expect((await res.json()).error).toBe('project_not_found');
 });
+
+async function createEntity(request: APIRequestContext, token: string, id?: string): Promise<string> {
+  const eid = id ?? `entity_patch_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  const res = await request.post('/api/wiki-entities', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: makeBody({ id: eid }),
+  });
+  const body = await res.json();
+  if (!body.id) throw new Error(`entity creation failed: ${JSON.stringify(body)}`);
+  return body.id;
+}
+
+test('PATCH /api/wiki-entities/:slug/:id: missing bearer → 401', async ({ request }) => {
+  const res = await request.patch(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/some_id`, { data: { name: 'x' } });
+  expect(res.status()).toBe(401);
+});
+
+test('PATCH /api/wiki-entities/:slug/:id: unknown entity → 404 entity_not_found', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.patch(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/no_such_entity`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { name: 'x' },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('entity_not_found');
+});
+
+test('PATCH /api/wiki-entities/:slug/:id: invalid type → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEntity(request, token);
+  const res = await request.patch(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { type: 'no-such-type' },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
+test('PATCH /api/wiki-entities/:slug/:id: invalid status → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEntity(request, token);
+  const res = await request.patch(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { status: 'bogus' },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
+test('PATCH /api/wiki-entities/:slug/:id: empty body → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEntity(request, token);
+  const res = await request.patch(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {},
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
+test('PATCH /api/wiki-entities/:slug/:id: partial name update → 200, body untouched', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEntity(request, token);
+
+  const res = await request.patch(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { name: 'Edited Name' },
+  });
+  expect(res.status()).toBe(200);
+
+  const get = await request.get(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await get.json();
+  expect(body.name).toBe('Edited Name');
+  expect(body.bodyMarkdown).toBe('## Body\n\nDetails.');
+});
+
+test('PATCH /api/wiki-entities/:slug/:id: sourceFiles ignored, original preserved', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEntity(request, token);
+
+  const res = await request.patch(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { name: 'Edited', sourceFiles: ['hijacked.md'] },
+  });
+  expect(res.status()).toBe(200);
+
+  const get = await request.get(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await get.json();
+  expect(body.sourceFiles).toEqual(['progress_20260427_1400.md']);
+});
+
+test('DELETE /api/wiki-entities/:slug/:id: unknown entity → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.delete(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/no_such_entity`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('entity_not_found');
+});
+
+test('DELETE /api/wiki-entities/:slug/:id: happy path → 204, row gone', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEntity(request, token);
+
+  const del = await request.delete(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(del.status()).toBe(204);
+
+  const get = await request.get(`/api/projects/${FIXTURE_PROJECT}/wiki-entities/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(get.status()).toBe(404);
+});

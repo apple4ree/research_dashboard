@@ -12,6 +12,8 @@ import type {
   EntryEventAction,
   MilestoneEventAction,
   TodoEventAction,
+  FlowEventActivityAction,
+  WikiEntityEventAction,
   UserLogin,
   Slug,
 } from '@/lib/types';
@@ -25,6 +27,8 @@ type PayloadFor<T extends EventType> =
   T extends 'entry' ? { entryId: string; action: EntryEventAction } :
   T extends 'milestone' ? { milestoneId: number; action: MilestoneEventAction } :
   T extends 'todo' ? { todoId: number; action: TodoEventAction } :
+  T extends 'flow_event' ? { flowEventId: number; action: FlowEventActivityAction } :
+  T extends 'wiki_entity' ? { entityId: string; action: WikiEntityEventAction } :
   never;
 
 /**

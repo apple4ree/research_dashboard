@@ -105,7 +105,7 @@ already serves the other PATCH endpoints).
 
 **Response 204** (no content).
 
-### `PATCH /api/wiki-entities/:slug/:id`
+### `PATCH /api/projects/:slug/wiki-entities/:id`
 
 **Auth:** as above.
 
@@ -141,7 +141,7 @@ already serves the other PATCH endpoints).
 
 **Response 200:** `{ ok: true, id }`.
 
-### `DELETE /api/wiki-entities/:slug/:id`
+### `DELETE /api/projects/:slug/wiki-entities/:id`
 
 **Auth:** as above.
 

@@ -876,11 +876,11 @@ export function TaskKanbanLive({
                   <span
                     className={`absolute -left-[30px] top-4 w-3 h-3 rounded-full bg-white border-2 ${tone.ring}`}
                   />
-                  {editMode && isEditing && eid !== undefined ? (
+                  {isEditing && eid !== undefined ? (
                     <EventEditForm
                       slug={slug}
                       event={{ ...e, id: eid }}
-                      onCancelHref={cancelHref + (selectedTaskId ? '&edit=1' : '?edit=1')}
+                      onCancelHref={cancelHref}
                       allTasks={tasks}
                       currentTaskId={(linksByEvent.get(eid) ?? [])[0]?.todoId ?? null}
                     />
@@ -892,8 +892,8 @@ export function TaskKanbanLive({
                       allTasks={tasks}
                       links={links}
                       comments={(eid !== undefined && commentsByEventId[eid]) || []}
-                      editHref={editHref + '&edit=1'}
-                      showEditAffordance={editMode}
+                      editHref={editHref}
+                      showEditAffordance={true}
                       showLinkEditing={editMode}
                     />
                   )}

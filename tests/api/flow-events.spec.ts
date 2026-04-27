@@ -164,3 +164,104 @@ test('GET /api/projects/:slug/flow-events: unknown project → 404', async ({ re
   expect(res.status()).toBe(404);
   expect((await res.json()).error).toBe('project_not_found');
 });
+
+async function createEvent(request: APIRequestContext, token: string, source?: string): Promise<number> {
+  const res = await request.post('/api/flow-events', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: makeBody({ source: source ?? `progress_patch_${Date.now()}_${Math.floor(Math.random() * 1e6)}.md` }),
+  });
+  const body = await res.json();
+  if (!body.eventId) throw new Error(`event creation failed: ${JSON.stringify(body)}`);
+  return body.eventId;
+}
+
+test('PATCH /api/flow-events/:id: missing bearer → 401', async ({ request }) => {
+  const res = await request.patch('/api/flow-events/1', { data: { title: 'x' } });
+  expect(res.status()).toBe(401);
+});
+
+test('PATCH /api/flow-events/:id: unknown id → 404 flow_event_not_found', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.patch('/api/flow-events/9999999', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { title: 'x' },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('flow_event_not_found');
+});
+
+test('PATCH /api/flow-events/:id: invalid tone → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEvent(request, token);
+  const res = await request.patch(`/api/flow-events/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { tone: 'bogus' },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
+test('PATCH /api/flow-events/:id: empty body → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEvent(request, token);
+  const res = await request.patch(`/api/flow-events/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {},
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
+test('PATCH /api/flow-events/:id: partial title update → 200, others untouched', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEvent(request, token);
+  const res = await request.patch(`/api/flow-events/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { title: 'edited title' },
+  });
+  expect(res.status()).toBe(200);
+  expect((await res.json()).id).toBe(id);
+
+  const list = await request.get(`/api/projects/${FIXTURE_PROJECT}/flow-events`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const events = (await list.json()).events as { id: number; title: string; tone: string }[];
+  const e = events.find(x => x.id === id);
+  expect(e?.title).toBe('edited title');
+  expect(e?.tone).toBe('milestone');
+});
+
+test('PATCH /api/flow-events/:id: bullets wholesale replace', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEvent(request, token);
+  const res = await request.patch(`/api/flow-events/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { bullets: ['new-1', 'new-2', 'new-3'] },
+  });
+  expect(res.status()).toBe(200);
+});
+
+test('DELETE /api/flow-events/:id: unknown id → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.delete('/api/flow-events/9999999', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('flow_event_not_found');
+});
+
+test('DELETE /api/flow-events/:id: happy path → 204, row gone', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEvent(request, token);
+
+  const del = await request.delete(`/api/flow-events/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(del.status()).toBe(204);
+
+  const list = await request.get(`/api/projects/${FIXTURE_PROJECT}/flow-events`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const events = (await list.json()).events as { id: number }[];
+  expect(events.find(e => e.id === id)).toBeUndefined();
+});
