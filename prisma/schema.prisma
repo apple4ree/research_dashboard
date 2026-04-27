@@ -104,16 +104,23 @@ model Project {
   readmeMarkdown String?   // optional synced README content (from GitHub or internal)
   targetVenue    String?   // target conference / journal shown in Overview KPI bar
 
-  repos       ProjectRepo[]
-  members     ProjectMember[]
-  papers      Paper[]
-  releases    Release[]
-  runs        ExperimentRun[]
-  events      ActivityEvent[]
-  entries     ResearchEntry[]
-  milestones  Milestone[]
-  todos       TodoItem[]
-  discussions Discussion[]
+  // Operational fs path (set by an admin) of the local git checkout for this
+  // project. Used by tooling that mirrors files into LabHub. Optional — purely
+  // informational projects can leave it null.
+  localPath      String?
+
+  repos        ProjectRepo[]
+  members      ProjectMember[]
+  papers       Paper[]
+  releases     Release[]
+  runs         ExperimentRun[]
+  events       ActivityEvent[]
+  entries      ResearchEntry[]
+  milestones   Milestone[]
+  todos        TodoItem[]
+  discussions  Discussion[]
+  wikiTypes    WikiType[]
+  wikiEntities WikiEntity[]
 }
 
 model ProjectMember {
@@ -320,4 +327,41 @@ model TodoItem {
   position    Int
 
   project Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+}
+
+// ========== Wiki (per-project knowledge entities, LLM-maintained) ==========
+//
+// Karpathy-style wiki: persistent entity pages (e.g. attacks/defenses/concepts
+// for an attack-research project). Each project defines its own type registry
+// (WikiType), and entities are namespaced by project + id. Source of truth is
+// typically a git folder (Project.localPath/wiki/...) — a sync script mirrors
+// files into these tables for indexed access from the UI.
+
+model WikiType {
+  id          Int      @id @default(autoincrement())
+  projectSlug String
+  key         String   // 'attack', 'defense', 'concept', 'finding', 'method', ...
+  label       String   // display name e.g. 'Attacks'
+  position    Int      @default(0)
+  description String?
+
+  project Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  @@unique([projectSlug, key])
+}
+
+model WikiEntity {
+  projectSlug     String
+  id              String   // slug-style id within the project, e.g. 'trigger_universal'
+  type            String   // matches a WikiType.key for the same project
+  name            String
+  status          String   @default("active") // 'active' | 'deprecated' | 'superseded'
+  summaryMarkdown String   @default("")
+  bodyMarkdown    String
+  sourceFiles     String   @default("[]") // JSON array of relative paths under Project.localPath
+  lastSyncedAt    DateTime
+  source          String   @default("wiki-llm")
+
+  project Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  @@id([projectSlug, id])
+  @@index([projectSlug, type])
 }

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookIcon, PlayIcon, FileIcon, DatabaseIcon, PeopleIcon, CommentDiscussionIcon } from '@primer/octicons-react';
+import { BookIcon, PlayIcon, FileIcon, DatabaseIcon, PeopleIcon, CommentDiscussionIcon, BookmarkIcon } from '@primer/octicons-react';
 import { cn } from '@/lib/cn';
 
 const TABS = [
   { key: 'overview',    label: 'Overview',    Icon: BookIcon,               href: '' },
+  { key: 'wiki',        label: 'Wiki',        Icon: BookmarkIcon,           href: '/wiki' },
   { key: 'experiments', label: 'Experiments', Icon: PlayIcon,               href: '/experiments' },
   { key: 'papers',      label: 'Papers',      Icon: FileIcon,               href: '/papers' },
   { key: 'data',        label: 'Data',        Icon: DatabaseIcon,           href: '/data' },

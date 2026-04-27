@@ -52,3 +52,7 @@ yarn-error.log*
 prisma/dev.db
 prisma/dev.db-journal
 prisma/backups/
+
+# Local SQLite DB
+prod.db
+prod.db-journal
