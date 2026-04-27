@@ -18,6 +18,16 @@
       "skills": [
         "./skills/labhub"
       ]
+    },
+    {
+      "name": "labhub-flow-ingest",
+      "source": "./",
+      "description": "Mirror a research project's progress files into LabHub Flow J view (FlowEvents + task links). Walks <localPath>/progress/<researcher>/progress_*.md, runs LLM extraction, persists rows.",
+      "version": "0.1.0",
+      "category": "research",
+      "skills": [
+        "./skills/labhub-flow-ingest"
+      ]
     }
   ]
 }
