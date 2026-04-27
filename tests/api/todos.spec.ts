@@ -156,3 +156,157 @@ test('DELETE /api/todos/:id: missing id → 404', async ({ request }) => {
   });
   expect(res.status()).toBe(404);
 });
+
+test('POST /api/todos: status="done" → done=true persisted', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'sync-1', status: 'done' },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+
+  const verify = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {},
+  });
+  expect(verify.status()).toBe(200);
+  const row = await verify.json();
+  expect(row.status).toBe('done');
+  expect(row.done).toBe(true);
+});
+
+test('POST /api/todos: status="pending" → done=false persisted', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'sync-2', status: 'pending' },
+  });
+  const { id } = await created.json();
+
+  const verify = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {},
+  });
+  const row = await verify.json();
+  expect(row.status).toBe('pending');
+  expect(row.done).toBe(false);
+});
+
+test('POST /api/todos: contradictory {done:true, status:"pending"} → status wins', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      projectSlug: FIXTURE_PROJECT,
+      bucket: 'short',
+      text: 'sync-3',
+      done: true,
+      status: 'pending',
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+
+  const verify = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {},
+  });
+  const row = await verify.json();
+  expect(row.status).toBe('pending');
+  expect(row.done).toBe(false);
+});
+
+test('PATCH /api/todos/:id: {done:true} → status="done" auto-derived', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'sync-4' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { done: true },
+  });
+  expect(patched.status()).toBe(200);
+  const row = await patched.json();
+  expect(row.done).toBe(true);
+  expect(row.status).toBe('done');
+});
+
+test('PATCH /api/todos/:id: {done:false} on a "done" row → status="in_progress"', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'sync-5', status: 'done' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { done: false },
+  });
+  const row = await patched.json();
+  expect(row.done).toBe(false);
+  expect(row.status).toBe('in_progress');
+});
+
+test('PATCH /api/todos/:id: {status:"pending"} → done=false', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'sync-6', status: 'done' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { status: 'pending' },
+  });
+  const row = await patched.json();
+  expect(row.status).toBe('pending');
+  expect(row.done).toBe(false);
+});
+
+test('PATCH /api/todos/:id: goal/subtasks/group all persist', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'fields-1' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/todos/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      goal: 'reduce p99 latency',
+      subtasks: ['profile baseline', 'identify hot path', 'patch'],
+      group: 'perf-2026Q2',
+    },
+  });
+  expect(patched.status()).toBe(200);
+  const row = await patched.json();
+  expect(row.goal).toBe('reduce p99 latency');
+  expect(Array.isArray(row.subtasks)).toBe(true);
+  expect(row.subtasks).toEqual(['profile baseline', 'identify hot path', 'patch']);
+  expect(row.group).toBe('perf-2026Q2');
+});
+
+test('POST /api/todos: subtasks as non-array → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'bad', subtasks: 'not an array' },
+  });
+  expect(res.status()).toBe(400);
+});
+
+test('POST /api/todos: invalid status → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.post('/api/todos', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, bucket: 'short', text: 'bad', status: 'bogus' },
+  });
+  expect(res.status()).toBe(400);
+});
