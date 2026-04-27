@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { XIcon, PlusIcon, AlertIcon } from '@primer/octicons-react';
 import { Avatar } from '@/components/people/Avatar';
 import { LabelChip } from '@/components/badges/LabelChip';
@@ -23,6 +23,16 @@ export function ProjectMembersView({
   const [selectedLogin, setSelectedLogin] = useState(candidates[0]?.login ?? '');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // After a successful add the server revalidates and a smaller candidates
+  // list arrives. Reset selection if the previously chosen login is gone,
+  // otherwise the <select> shows the first option but state still points
+  // at the just-added member, and subsequent Add clicks are no-ops.
+  useEffect(() => {
+    if (!candidates.find(c => c.login === selectedLogin)) {
+      setSelectedLogin(candidates[0]?.login ?? '');
+    }
+  }, [candidates, selectedLogin]);
 
   function onAdd(e: React.FormEvent) {
     e.preventDefault();
