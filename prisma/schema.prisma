@@ -288,8 +288,14 @@ model EntryArtifact {
   entryId  String
   type     String // 'notebook' | 'figure' | 'sheet' | 'csv' | 'doc' | 'slide'
   title    String
-  href     String
+  href     String  // for url-mode: external URL; for file-mode: /api/uploads/<id>
   position Int
+
+  // File-mode columns. NULL when the artifact is a plain URL link.
+  storedPath       String?  // path under UPLOADS_ROOT, e.g. "<entryId>/<id>-<safe-name>"
+  originalFilename String?
+  mimeType         String?
+  sizeBytes        Int?
 
   entry ResearchEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
 }

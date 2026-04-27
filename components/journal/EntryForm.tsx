@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useActionState, useState } from 'react';
-import { PlusIcon, XIcon, ArrowLeftIcon, AlertIcon } from '@primer/octicons-react';
+import { PlusIcon, XIcon, ArrowLeftIcon, AlertIcon, FileIcon, LinkIcon } from '@primer/octicons-react';
 import {
   createEntryAction,
   updateEntryAction,
@@ -25,6 +25,29 @@ import type {
 const SLIDE_KINDS: SlideKind[] = ['discovery', 'failure', 'implement', 'question', 'next', 'metric'];
 const ARTIFACT_TYPES: ArtifactType[] = ['notebook', 'figure', 'sheet', 'csv', 'doc', 'slide'];
 
+const MAX_FILE_SIZE_MB = 100;
+
+/** Form-only shape: extends EntryArtifact with a mode flag and File ref. */
+type ArtifactRow = {
+  id?: number;
+  type: ArtifactType;
+  title: string;
+  href: string;                 // used in url-mode; '' for file-mode
+  mode: 'url' | 'file';
+  storedPath?: string | null;   // present for kept file-mode rows
+  originalFilename?: string | null;
+  sizeBytes?: number | null;
+};
+
+function formatBytes(n: number | null | undefined): string {
+  if (!n || n <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 100 ? 0 : 1)} ${units[i]}`;
+}
+
 interface EntryFormProps {
   projectSlug: string;
   mode: 'create' | 'edit';
@@ -40,7 +63,18 @@ export function EntryForm({ projectSlug, mode, initial, members }: EntryFormProp
   const [state, formAction, pending] = useActionState<EntryActionState, FormData>(bound, null);
 
   const [slides, setSlides] = useState<EntrySlide[]>(initial?.slides ?? []);
-  const [artifacts, setArtifacts] = useState<EntryArtifact[]>(initial?.artifacts ?? []);
+  const [artifacts, setArtifacts] = useState<ArtifactRow[]>(() =>
+    (initial?.artifacts ?? []).map(a => ({
+      id: a.id,
+      type: a.type,
+      title: a.title,
+      href: a.href,
+      storedPath: a.storedPath ?? null,
+      originalFilename: a.originalFilename ?? null,
+      sizeBytes: a.sizeBytes ?? null,
+      mode: a.storedPath ? 'file' : 'url',
+    })),
+  );
 
   const addSlide = () =>
     setSlides(prev => [...prev, { kind: 'discovery', title: '', body: '' }]);
@@ -50,10 +84,10 @@ export function EntryForm({ projectSlug, mode, initial, members }: EntryFormProp
     setSlides(prev => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
 
   const addArtifact = () =>
-    setArtifacts(prev => [...prev, { type: 'notebook', title: '', href: '' }]);
+    setArtifacts(prev => [...prev, { type: 'notebook', title: '', href: '', mode: 'url' }]);
   const removeArtifact = (i: number) =>
     setArtifacts(prev => prev.filter((_, idx) => idx !== i));
-  const updateArtifact = (i: number, patch: Partial<EntryArtifact>) =>
+  const updateArtifact = (i: number, patch: Partial<ArtifactRow>) =>
     setArtifacts(prev => prev.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
 
   const defaultDate =
@@ -72,7 +106,13 @@ export function EntryForm({ projectSlug, mode, initial, members }: EntryFormProp
     })),
   );
   const artifactsJson = JSON.stringify(
-    artifacts.map(a => ({ type: a.type, title: a.title, href: a.href })),
+    artifacts.map(a => ({
+      ...(a.id !== undefined ? { id: a.id } : {}),
+      type: a.type,
+      title: a.title,
+      href: a.mode === 'url' ? a.href : '',
+      mode: a.mode,
+    })),
   );
 
   return (
@@ -299,46 +339,103 @@ export function EntryForm({ projectSlug, mode, initial, members }: EntryFormProp
             </button>
           </div>
           <div className="space-y-2">
-            {artifacts.map((a, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <select
-                  value={a.type}
-                  onChange={e =>
-                    updateArtifact(i, { type: e.target.value as ArtifactType })
-                  }
-                  aria-label={`artifact ${i + 1} type`}
-                  className="text-xs border border-border-default rounded px-2 py-1 w-28 bg-white"
-                >
-                  {ARTIFACT_TYPES.map(t => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  value={a.title}
-                  onChange={e => updateArtifact(i, { title: e.target.value })}
-                  placeholder="Artifact title"
-                  className="flex-1 text-sm border border-border-default rounded px-2 py-1"
-                />
-                <input
-                  type="text"
-                  value={a.href}
-                  onChange={e => updateArtifact(i, { href: e.target.value })}
-                  placeholder="URL"
-                  className="flex-1 text-sm border border-border-default rounded px-2 py-1 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeArtifact(i)}
-                  className="text-fg-muted hover:text-danger-fg p-1"
-                  aria-label={`Remove artifact ${i + 1}`}
-                >
-                  <XIcon size={14} />
-                </button>
-              </div>
-            ))}
+            {artifacts.map((a, i) => {
+              const isExistingFile = a.id !== undefined && a.mode === 'file' && a.storedPath;
+              return (
+                <div key={a.id ?? `new-${i}`} className="border border-border-muted rounded-md p-2 bg-canvas-default space-y-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={a.type}
+                      onChange={e =>
+                        updateArtifact(i, { type: e.target.value as ArtifactType })
+                      }
+                      aria-label={`artifact ${i + 1} type`}
+                      className="text-xs border border-border-default rounded px-2 py-1 w-28 bg-white"
+                    >
+                      {ARTIFACT_TYPES.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={a.title}
+                      onChange={e => updateArtifact(i, { title: e.target.value })}
+                      placeholder="Artifact title"
+                      className="flex-1 text-sm border border-border-default rounded px-2 py-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeArtifact(i)}
+                      className="text-fg-muted hover:text-danger-fg p-1"
+                      aria-label={`Remove artifact ${i + 1}`}
+                    >
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+                  {/* Mode toggle: URL vs File. Disabled for existing file rows
+                      (replacement happens by removing + re-adding). */}
+                  {!isExistingFile && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => updateArtifact(i, { mode: 'url', href: a.href })}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded border ${
+                          a.mode === 'url'
+                            ? 'bg-accent-fg text-white border-accent-fg'
+                            : 'bg-white border-border-default text-fg-muted hover:border-accent-fg'
+                        }`}
+                      >
+                        <LinkIcon size={12} /> URL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateArtifact(i, { mode: 'file' })}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded border ${
+                          a.mode === 'file'
+                            ? 'bg-accent-fg text-white border-accent-fg'
+                            : 'bg-white border-border-default text-fg-muted hover:border-accent-fg'
+                        }`}
+                      >
+                        <FileIcon size={12} /> File
+                      </button>
+                      <span className="text-fg-muted ml-1">
+                        {a.mode === 'file' && `최대 ${MAX_FILE_SIZE_MB}MB`}
+                      </span>
+                    </div>
+                  )}
+                  {isExistingFile ? (
+                    <div className="flex items-center gap-2 text-xs bg-canvas-subtle rounded px-2 py-1.5">
+                      <FileIcon size={12} className="text-fg-muted" />
+                      <a
+                        href={a.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-accent-fg hover:underline truncate"
+                      >
+                        {a.originalFilename ?? a.href}
+                      </a>
+                      <span className="text-fg-muted">{formatBytes(a.sizeBytes)}</span>
+                      <span className="ml-auto text-fg-muted/80">파일 교체는 행을 삭제 후 재추가</span>
+                    </div>
+                  ) : a.mode === 'url' ? (
+                    <input
+                      type="text"
+                      value={a.href}
+                      onChange={e => updateArtifact(i, { href: e.target.value })}
+                      placeholder="https://… (Notion / GDrive / GitHub)"
+                      className="w-full text-sm border border-border-default rounded px-2 py-1 font-mono"
+                    />
+                  ) : (
+                    <input
+                      type="file"
+                      name={`artifact_${i}_file`}
+                      required
+                      className="text-xs"
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
 

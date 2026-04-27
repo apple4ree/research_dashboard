@@ -185,7 +185,12 @@ test('GET /api/projects/:slug/wiki-types: returns types in position order', asyn
   const body = await res.json();
   expect(Array.isArray(body.types)).toBe(true);
   const keys = body.types.map((t: { key: string }) => t.key);
-  expect(keys).toEqual(['attack', 'concept']);
+  // Other tests POST additional types into the same fixture project; assert
+  // only that the seed types are present in their original relative order.
+  const attackIdx = keys.indexOf('attack');
+  const conceptIdx = keys.indexOf('concept');
+  expect(attackIdx).toBeGreaterThanOrEqual(0);
+  expect(conceptIdx).toBeGreaterThan(attackIdx);
   expect(typeof body.types[0].label).toBe('string');
 });
 

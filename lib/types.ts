@@ -181,9 +181,15 @@ export type MilestoneStatus = 'past' | 'now' | 'future';
 export type TodoBucket = 'short' | 'mid' | 'long';
 
 export interface EntryArtifact {
+  id?: number;                  // present when loaded from DB; absent for unsaved rows in form state
   type: ArtifactType;
   title: string;
   href: string;
+  // File-mode metadata. Set when the artifact is a stored upload, not an external URL.
+  storedPath?: string | null;
+  originalFilename?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
 }
 
 export interface EntryMetric {
