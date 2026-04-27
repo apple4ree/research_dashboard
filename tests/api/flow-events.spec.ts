@@ -231,6 +231,51 @@ test('PATCH /api/flow-events/:id: partial title update → 200, others untouched
   expect(e?.tone).toBe('milestone');
 });
 
+test('POST /api/flow-events: bodyMarkdown round-trips through GET full', async ({ request }) => {
+  const token = await getToken(request);
+  const source = `progress_body_${Date.now()}.md`;
+  const original = '# heading\n\nLine 1.\n\nLine 2.';
+  const post = await request.post('/api/flow-events', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      ...makeBody({ source }),
+      event: { ...makeBody({ source }).event, bodyMarkdown: original },
+    },
+  });
+  expect(post.status()).toBe(201);
+});
+
+test('PATCH /api/flow-events/:id: bodyMarkdown can be updated and cleared', async ({ request }) => {
+  const token = await getToken(request);
+  const id = await createEvent(request, token);
+
+  const set = await request.patch(`/api/flow-events/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { bodyMarkdown: 'edited body' },
+  });
+  expect(set.status()).toBe(200);
+
+  const clear = await request.patch(`/api/flow-events/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { bodyMarkdown: null },
+  });
+  expect(clear.status()).toBe(200);
+});
+
+test('POST /api/flow-events: bodyMarkdown over 1MB → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const huge = 'x'.repeat(1_000_001);
+  const res = await request.post('/api/flow-events', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      ...makeBody(),
+      event: { ...makeBody().event, bodyMarkdown: huge, source: `progress_huge_${Date.now()}.md` },
+    },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
 test('PATCH /api/flow-events/:id: bullets wholesale replace', async ({ request }) => {
   const token = await getToken(request);
   const id = await createEvent(request, token);

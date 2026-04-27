@@ -406,6 +406,7 @@ model FlowEvent {
   bullets     String?  // JSON array of strings
   numbers     String?  // JSON array of { label, value }
   tags        String?  // JSON array of strings
+  bodyMarkdown String? // optional copy of the source progress_*.md body sent at ingest time
   position    Int      @default(0)
 
   project   Project             @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)

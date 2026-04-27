@@ -102,12 +102,19 @@ Following `docs/progress-format.md` plus the body markdown sections
     "tone": "milestone | result | pivot | design | incident",
     "bullets": ["<short fact 1>", "<short fact 2>"],
     "numbers": [{ "label": "<short metric>", "value": "<value string>" }],
-    "tags": ["<theme>", "<activity>"]
+    "tags": ["<theme>", "<activity>"],
+    "bodyMarkdown": "<the unmodified contents of the source progress_*.md file you read in 3a>"
   },
   "taskIds": [13, 14, 16],
   "overwrite": false
 }
 ```
+
+**`bodyMarkdown`** — pass the raw markdown body verbatim (don't strip
+frontmatter, don't reflow). The dashboard renders it inside each event
+card's "원본 progress.md 보기" expandable so any lab member can see the
+note even if they don't have the file on their laptop. Cap is 1MB; truncate
+or skip the field for unusually large files.
 
 **Tone — pick exactly one** (overlap is fine; pick the central change):
 

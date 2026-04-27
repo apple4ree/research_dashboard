@@ -7,6 +7,11 @@ import { requireProject } from '@/lib/api/project';
 
 const ALLOWED_TONES = new Set(['milestone', 'pivot', 'result', 'incident', 'design']);
 
+// Reasonable cap on the original progress_*.md body that callers may attach.
+// Researcher progress notes are typically a few KB; 1MB is a generous ceiling
+// that keeps the DB row bounded while not blocking real notes.
+const MAX_BODY_MARKDOWN_BYTES = 1_000_000;
+
 type ApplyPayload = {
   projectSlug?: string;
   event?: {
@@ -18,6 +23,7 @@ type ApplyPayload = {
     bullets?: unknown;
     numbers?: unknown;
     tags?: unknown;
+    bodyMarkdown?: string;
   };
   taskIds?: number[];
   overwrite?: boolean;
@@ -87,6 +93,21 @@ export async function POST(req: NextRequest) {
     await prisma.flowEvent.deleteMany({ where: { projectSlug, source } });
   }
 
+  let bodyMarkdown: string | null = null;
+  if (event.bodyMarkdown !== undefined) {
+    if (typeof event.bodyMarkdown !== 'string') {
+      return apiError(400, 'invalid_request', 'event.bodyMarkdown must be a string');
+    }
+    if (event.bodyMarkdown.length > MAX_BODY_MARKDOWN_BYTES) {
+      return apiError(
+        400,
+        'invalid_request',
+        `event.bodyMarkdown exceeds ${MAX_BODY_MARKDOWN_BYTES} bytes`,
+      );
+    }
+    bodyMarkdown = event.bodyMarkdown;
+  }
+
   const max = await prisma.flowEvent.findFirst({
     where: { projectSlug },
     orderBy: { position: 'desc' },
@@ -104,6 +125,7 @@ export async function POST(req: NextRequest) {
       bullets: event.bullets ? JSON.stringify(event.bullets) : null,
       numbers: event.numbers ? JSON.stringify(event.numbers) : null,
       tags: event.tags ? JSON.stringify(event.tags) : null,
+      bodyMarkdown,
       position: (max?.position ?? -1) + 1,
     },
   });

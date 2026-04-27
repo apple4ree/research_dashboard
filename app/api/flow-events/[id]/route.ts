@@ -12,6 +12,8 @@ function parseId(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+const MAX_BODY_MARKDOWN_BYTES = 1_000_000;
+
 type PatchPayload = {
   date?: string;
   source?: string;
@@ -21,6 +23,7 @@ type PatchPayload = {
   bullets?: unknown;
   numbers?: unknown;
   tags?: unknown;
+  bodyMarkdown?: string | null;
 };
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -77,6 +80,21 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
   if (body.tags !== undefined) {
     data.tags = body.tags === null ? null : JSON.stringify(body.tags);
+  }
+  if (body.bodyMarkdown !== undefined) {
+    if (body.bodyMarkdown === null) {
+      data.bodyMarkdown = null;
+    } else if (typeof body.bodyMarkdown !== 'string') {
+      return apiError(400, 'invalid_request', 'bodyMarkdown must be a string or null');
+    } else if (body.bodyMarkdown.length > MAX_BODY_MARKDOWN_BYTES) {
+      return apiError(
+        400,
+        'invalid_request',
+        `bodyMarkdown exceeds ${MAX_BODY_MARKDOWN_BYTES} bytes`,
+      );
+    } else {
+      data.bodyMarkdown = body.bodyMarkdown;
+    }
   }
 
   if (Object.keys(data).length === 0) {

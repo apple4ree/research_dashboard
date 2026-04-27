@@ -9,12 +9,21 @@ import { buildLiveTasks, type EventLink, type EventComment } from '@/components/
 
 const PROGRESS_ROOT_FALLBACK = '/home/dami/wj/Research/StealthyIPIAttack/progress/ys';
 
-async function enrichWithSource(events: FlowEvent[], localPath: string | null): Promise<FlowEvent[]> {
-  // Try multiple researcher subdirs under <localPath>/progress/<researcher>/
+async function enrichWithSource(
+  events: (FlowEvent & { bodyMarkdown?: string | null })[],
+  localPath: string | null,
+): Promise<FlowEvent[]> {
   const root = localPath ? path.join(localPath, 'progress') : PROGRESS_ROOT_FALLBACK;
   return Promise.all(
     events.map(async e => {
-      // Try direct path first, then walk researcher subdirs.
+      // Prefer the bodyMarkdown captured at ingest time — works for any
+      // researcher's progress regardless of whether the file exists on
+      // this server. Fall back to filesystem lookup for legacy events
+      // that were ingested before bodyMarkdown was added (or for the
+      // admin path where the file lives next to the LabHub repo).
+      if (e.bodyMarkdown) {
+        return { ...e, sourceContent: e.bodyMarkdown };
+      }
       try {
         const direct = path.join(root, e.source);
         const content = await fs.readFile(direct, 'utf8');
@@ -76,7 +85,7 @@ export default async function ProjectFlowPage({
   }
 
   const links: EventLink[] = rawLinks;
-  const dbEvents: FlowEvent[] = rawEvents.map(r => ({
+  const dbEvents = rawEvents.map(r => ({
     id: r.id,
     date: r.date,
     source: r.source,
@@ -86,6 +95,7 @@ export default async function ProjectFlowPage({
     bullets: r.bullets ? JSON.parse(r.bullets) : undefined,
     numbers: r.numbers ? JSON.parse(r.numbers) : undefined,
     tags: r.tags ? JSON.parse(r.tags) : undefined,
+    bodyMarkdown: r.bodyMarkdown,
   }));
   const enrichedEvents = await enrichWithSource(dbEvents, project.localPath);
   const eventIdBySource: Record<string, number> = {};
