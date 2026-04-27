@@ -51,7 +51,9 @@ export function WikiTypesManager({
           )}
           <AddTypeForm slug={slug} />
           <p className="text-[11px] text-fg-muted">
-            Key는 소문자/숫자/<code>-</code>/<code>_</code>만. Entity가 이미 사용 중인 type은 삭제 안 됨.
+            <strong>Key</strong>는 변수명처럼 한 번 정하면 잘 안 바꿈 (소문자/숫자/<code>-</code>/<code>_</code>만).
+            <strong> Label</strong>은 사이드바·칩에 표시되는 이름으로, 언제든 바꿀 수 있음.
+            Entity가 이미 사용 중인 type은 삭제 안 됨.
           </p>
         </div>
       )}
@@ -118,39 +120,39 @@ function AddTypeForm({ slug }: { slug: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-2">
       <div className="flex flex-wrap items-end gap-2">
-        <div className="flex-1 min-w-[110px]">
+        <div className="flex-1 min-w-[140px]">
           <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
-            Key
+            Key <span className="normal-case font-normal text-fg-muted/80">— 시스템 식별자</span>
           </label>
           <input
             required
             value={key}
             onChange={e => setKey(e.target.value)}
-            placeholder="attack"
+            placeholder="영문 slug, e.g. attack"
             pattern="[a-z0-9_-]+"
             className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm font-mono"
           />
         </div>
-        <div className="flex-1 min-w-[150px]">
+        <div className="flex-1 min-w-[170px]">
           <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
-            Label
+            Label <span className="normal-case font-normal text-fg-muted/80">— 화면 표시명</span>
           </label>
           <input
             required
             value={label}
             onChange={e => setLabel(e.target.value)}
-            placeholder="Attacks"
+            placeholder="자유 형식, e.g. 공격 변종"
             className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm"
           />
         </div>
-        <div className="flex-[2] min-w-[180px]">
+        <div className="flex-[2] min-w-[200px]">
           <label className="block text-[10px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
-            Description (optional)
+            Description <span className="normal-case font-normal text-fg-muted/80">— 짧은 설명 (선택)</span>
           </label>
           <input
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="짧은 설명"
+            placeholder="이 분류가 다루는 내용 한 줄 요약"
             className="w-full bg-white border border-border-default rounded px-2 py-1.5 text-sm"
           />
         </div>
