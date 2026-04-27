@@ -14,6 +14,8 @@ export type ApiErrorCode =
   | 'event_already_exists'
   | 'flow_event_not_found'
   | 'entity_not_found'
+  | 'wiki_type_not_found'
+  | 'wiki_type_in_use'
   | 'github_verify_failed';
 
 export function apiError(status: number, code: ApiErrorCode, hint?: string) {

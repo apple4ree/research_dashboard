@@ -38,6 +38,7 @@ export default function middleware(req: NextRequest) {
     pathname.startsWith('/api/todos') ||
     pathname.startsWith('/api/flow-events') ||
     pathname.startsWith('/api/wiki-entities') ||
+    pathname.startsWith('/api/wiki-types') ||
     /^\/api\/projects\/[^/]+\/(entries|milestones|todos|flow-events|wiki-types|wiki-entities)/.test(pathname);
 
   if (isAuthRoute || isAuthApi || isBearerApi) return NextResponse.next();

@@ -315,3 +315,120 @@ test('DELETE /api/wiki-entities/:slug/:id: happy path → 204, row gone', async 
   });
   expect(get.status()).toBe(404);
 });
+
+// ---------- POST /api/wiki-types (skill-driven type definition) -------------
+
+test('POST /api/wiki-types: missing bearer → 401', async ({ request }) => {
+  const res = await request.post('/api/wiki-types', {
+    data: { projectSlug: FIXTURE_PROJECT, key: 'x', label: 'X' },
+  });
+  expect(res.status()).toBe(401);
+});
+
+test('POST /api/wiki-types: unknown projectSlug → 404 project_not_found', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: 'no-such', key: 'x', label: 'X' },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('project_not_found');
+});
+
+test('POST /api/wiki-types: invalid key (non-slug) → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, key: 'BadKey!', label: 'Bad' },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
+test('POST /api/wiki-types: missing label → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, key: 'no_label_test' },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error).toBe('invalid_request');
+});
+
+test('POST /api/wiki-types: happy path → 201 mode=created', async ({ request }) => {
+  const token = await getToken(request);
+  const key = `type_new_${Date.now()}`;
+  const res = await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, key, label: 'New Type', description: 'd' },
+  });
+  expect(res.status()).toBe(201);
+  const body = await res.json();
+  expect(body.ok).toBe(true);
+  expect(body.key).toBe(key);
+  expect(body.mode).toBe('created');
+});
+
+test('POST /api/wiki-types: same key again → 200 mode=updated (idempotent upsert)', async ({ request }) => {
+  const token = await getToken(request);
+  const key = `type_upd_${Date.now()}`;
+  await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, key, label: 'First' },
+  });
+  const res = await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, key, label: 'Second' },
+  });
+  expect(res.status()).toBe(200);
+  expect((await res.json()).mode).toBe('updated');
+
+  const get = await request.get(`/api/projects/${FIXTURE_PROJECT}/wiki-types`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const types = (await get.json()).types as { key: string; label: string }[];
+  expect(types.find(t => t.key === key)?.label).toBe('Second');
+});
+
+test('DELETE /api/projects/:slug/wiki-types/:key: missing key → 404 wiki_type_not_found', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.delete(`/api/projects/${FIXTURE_PROJECT}/wiki-types/no_such_type`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('wiki_type_not_found');
+});
+
+test('DELETE /api/projects/:slug/wiki-types/:key: in use → 409 wiki_type_in_use', async ({ request }) => {
+  const token = await getToken(request);
+  const key = `type_inuse_${Date.now()}`;
+  // create the type
+  await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, key, label: 'In use' },
+  });
+  // attach an entity to it
+  await request.post('/api/wiki-entities', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: makeBody({ id: `entity_inuse_${Date.now()}`, type: key }),
+  });
+
+  const del = await request.delete(`/api/projects/${FIXTURE_PROJECT}/wiki-types/${key}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(del.status()).toBe(409);
+  expect((await del.json()).error).toBe('wiki_type_in_use');
+});
+
+test('DELETE /api/projects/:slug/wiki-types/:key: happy path → 204', async ({ request }) => {
+  const token = await getToken(request);
+  const key = `type_del_${Date.now()}`;
+  await request.post('/api/wiki-types', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, key, label: 'Delete me' },
+  });
+  const del = await request.delete(`/api/projects/${FIXTURE_PROJECT}/wiki-types/${key}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(del.status()).toBe(204);
+});

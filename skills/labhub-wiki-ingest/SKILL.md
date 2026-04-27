@@ -52,11 +52,30 @@ curl -fsSL -H "Authorization: Bearer $TOKEN" \
   "$LABHUB_URL/api/projects/<SLUG>/wiki-entities"
 ```
 
-- `/wiki-types` → `{ types: [{ key, label, description }] }`. If empty array,
-  stop and tell the user:
+- `/wiki-types` → `{ types: [{ key, label, description }] }`.
 
-  > "이 프로젝트엔 WikiType이 없어요. 프로젝트 설정에서 분류(`attack`,
-  > `concept` 같은)를 먼저 정의해 주세요."
+  **If empty array — interactive bootstrap (don't stop):**
+  1. Ask the user:
+
+     > "이 프로젝트엔 WikiType이 아직 없어요. 어떤 분류로 wiki를 만들까요?
+     > 예시: `attack` (공격 변종), `defense` (방어 기법), `concept` (개념 정의),
+     > `method` (실험 방법), `finding` (발견). key/label 쌍으로 알려주세요
+     > (e.g., `attack:Attacks, concept:Concepts`)."
+
+  2. 사용자가 답하면 한 줄당 1개씩 다음 호출:
+     ```bash
+     curl -fsSL -X POST "$LABHUB_URL/api/wiki-types" \
+       -H "Authorization: Bearer $TOKEN" \
+       -H 'Content-Type: application/json' \
+       -d '{"projectSlug":"<SLUG>","key":"attack","label":"Attacks","description":"공격 변종"}'
+     ```
+     - 201 `created` / 200 `updated` (idempotent) → 기록.
+     - 400 `invalid_request` (key가 `/^[a-z0-9_-]+$/` 미스매치 등) → 사용자에게 다시 물어 정정.
+     - 404 `project_not_found` → stop.
+
+  3. 모두 만든 뒤 `GET /wiki-types` 재호출하여 갱신된 목록을 받아 다음 단계로 진행.
+
+  사용자가 만들기 거부하거나 입력 못 받으면 그때 stop, "프로젝트 wiki에서 직접 정의해 주세요" 안내.
 
 - `/wiki-entities` → `{ entities: [{ id, type, name, status, summaryMarkdown,
   sourceFiles, lastSyncedAt }] }`. Build:
