@@ -104,16 +104,25 @@ model Project {
   readmeMarkdown String?   // optional synced README content (from GitHub or internal)
   targetVenue    String?   // target conference / journal shown in Overview KPI bar
 
-  repos       ProjectRepo[]
-  members     ProjectMember[]
-  papers      Paper[]
-  releases    Release[]
-  runs        ExperimentRun[]
-  events      ActivityEvent[]
-  entries     ResearchEntry[]
-  milestones  Milestone[]
-  todos       TodoItem[]
-  discussions Discussion[]
+  // Operational fs path (set by an admin) of the local git checkout for this
+  // project. Used by tooling that mirrors files into LabHub. Optional — purely
+  // informational projects can leave it null.
+  localPath      String?
+
+  repos        ProjectRepo[]
+  members      ProjectMember[]
+  papers       Paper[]
+  releases     Release[]
+  runs         ExperimentRun[]
+  events       ActivityEvent[]
+  entries      ResearchEntry[]
+  milestones   Milestone[]
+  todos        TodoItem[]
+  discussions  Discussion[]
+  wikiTypes    WikiType[]
+  wikiEntities WikiEntity[]
+  flowEvents   FlowEvent[]
+  flowEventTaskLinks FlowEventTaskLink[]
 }
 
 model ProjectMember {
@@ -319,5 +328,109 @@ model TodoItem {
   done        Boolean  @default(false)
   position    Int
 
+  // Flow J view extensions: each TodoItem can carry a one-line goal, an
+  // ordered list of subtasks (JSON), a 3-state status, and a free-form
+  // group string used as an in-column "epic" header on the kanban.
+  goal     String?
+  subtasks String?  // JSON array of strings
+  status   String   @default("in_progress")  // 'pending' | 'in_progress' | 'done'
+  group    String?  // free-form epic / group name for in-column sub-headers
+
+  project   Project             @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  flowLinks FlowEventTaskLink[]
+}
+
+// ========== Wiki (per-project knowledge entities, LLM-maintained) ==========
+//
+// Karpathy-style wiki: persistent entity pages (e.g. attacks/defenses/concepts
+// for an attack-research project). Each project defines its own type registry
+// (WikiType), and entities are namespaced by project + id. Source of truth is
+// typically a git folder (Project.localPath/wiki/...) — a sync script mirrors
+// files into these tables for indexed access from the UI.
+
+model WikiType {
+  id          Int      @id @default(autoincrement())
+  projectSlug String
+  key         String   // 'attack', 'defense', 'concept', 'finding', 'method', ...
+  label       String   // display name e.g. 'Attacks'
+  position    Int      @default(0)
+  description String?
+
   project Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  @@unique([projectSlug, key])
+}
+
+model WikiEntity {
+  projectSlug     String
+  id              String   // slug-style id within the project, e.g. 'trigger_universal'
+  type            String   // matches a WikiType.key for the same project
+  name            String
+  status          String   @default("active") // 'active' | 'deprecated' | 'superseded'
+  summaryMarkdown String   @default("")
+  bodyMarkdown    String
+  sourceFiles     String   @default("[]") // JSON array of relative paths under Project.localPath
+  lastSyncedAt    DateTime
+  source          String   @default("wiki-llm")
+
+  project Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  @@id([projectSlug, id])
+  @@index([projectSlug, type])
+}
+
+// ========== Flow J view (event timeline + task kanban) ==========
+//
+// FlowEvent rows describe discrete research events (a result, a pivot, a
+// design decision, an incident). Multiple events can share a `source` (a
+// progress markdown file) when one writeup contains several distinct
+// activities.
+//
+// FlowEventTaskLink connects events to TodoItems (M:N). The same event can
+// belong to multiple tasks; the same task can have many events.
+//
+// FlowEventComment is inline Q&A on event cards.
+
+model FlowEvent {
+  id          Int      @id @default(autoincrement())
+  projectSlug String
+  date        String   // 'YYYY-MM-DD HH:mm' display string
+  source      String   // progress filename — sourceContent lookup + task linking
+  title       String
+  summary     String
+  tone        String   // 'milestone' | 'pivot' | 'result' | 'incident' | 'design' | 'deprecated'
+  bullets     String?  // JSON array of strings
+  numbers     String?  // JSON array of { label, value }
+  tags        String?  // JSON array of strings
+  position    Int      @default(0)
+
+  project   Project             @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  comments  FlowEventComment[]
+  taskLinks FlowEventTaskLink[]
+  @@index([projectSlug, source])
+  @@index([projectSlug, date])
+}
+
+model FlowEventComment {
+  id          Int      @id @default(autoincrement())
+  flowEventId Int
+  authorLogin String?  // nullable for anonymous (PUBLIC_MODE)
+  body        String
+  createdAt   DateTime @default(now())
+
+  flowEvent FlowEvent @relation(fields: [flowEventId], references: [id], onDelete: Cascade)
+  @@index([flowEventId, createdAt])
+}
+
+model FlowEventTaskLink {
+  id          Int      @id @default(autoincrement())
+  projectSlug String
+  flowEventId Int
+  todoId      Int
+  source      String   @default("manual")  // 'llm' | 'manual'
+  createdAt   DateTime @default(now())
+
+  project   Project   @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  flowEvent FlowEvent @relation(fields: [flowEventId], references: [id], onDelete: Cascade)
+  todo      TodoItem  @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  @@unique([flowEventId, todoId])
+  @@index([projectSlug])
 }
