@@ -123,3 +123,67 @@ test('GET /api/projects/:slug/milestones: auto-position assigns increasing value
   expect(a.position).toBe(baselineMaxPos + 1);
   expect(b.position).toBe(baselineMaxPos + 2);
 });
+
+test('PATCH /api/milestones/:id: partial update → 200', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-01', label: 'before', status: 'future' },
+  });
+  const { id } = await created.json();
+
+  const patched = await request.patch(`/api/milestones/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { label: 'after', status: 'now' },
+  });
+  expect(patched.status()).toBe(200);
+  const m = await patched.json();
+  expect(m.label).toBe('after');
+  expect(m.status).toBe('now');
+});
+
+test('PATCH /api/milestones/:id: missing id → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.patch('/api/milestones/999999', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { label: 'x' },
+  });
+  expect(res.status()).toBe(404);
+  expect((await res.json()).error).toBe('milestone_not_found');
+});
+
+test('PATCH /api/milestones/:id: invalid status → 400', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-01', label: 'patch-bad', status: 'future' },
+  });
+  const { id } = await created.json();
+  const res = await request.patch(`/api/milestones/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { status: 'bogus' },
+  });
+  expect(res.status()).toBe(400);
+});
+
+test('DELETE /api/milestones/:id: → 204', async ({ request }) => {
+  const token = await getToken(request);
+  const created = await request.post('/api/milestones', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { projectSlug: FIXTURE_PROJECT, date: '2026-05-01', label: 'delete-me', status: 'future' },
+  });
+  const { id } = await created.json();
+
+  const res = await request.delete(`/api/milestones/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(204);
+});
+
+test('DELETE /api/milestones/:id: missing id → 404', async ({ request }) => {
+  const token = await getToken(request);
+  const res = await request.delete('/api/milestones/999999', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status()).toBe(404);
+});
