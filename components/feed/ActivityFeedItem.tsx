@@ -11,6 +11,9 @@ const toneByType = {
   release: 'success',
   discussion: 'done',
   project: 'neutral',
+  entry: 'accent',
+  milestone: 'attention',
+  todo: 'done',
 } as const;
 
 function paperVerb(action: PaperEventAction, version?: number): string {
@@ -48,6 +51,23 @@ function renderBody(e: ActivityEvent, ctx: EventContext) {
     }
     case 'project':
       return <span><b>{actor}</b> updated {projLink ?? 'a project'}</span>;
+    case 'entry': {
+      const verb = e.payload.action === 'created' ? 'created' : e.payload.action === 'updated' ? 'updated' : 'deleted';
+      return <span><b>{actor}</b> {verb} a journal entry{projLink && <> in {projLink}</>}</span>;
+    }
+    case 'milestone': {
+      const verb = e.payload.action === 'created' ? 'added' : e.payload.action === 'updated' ? 'updated' : 'deleted';
+      return <span><b>{actor}</b> {verb} a milestone{projLink && <> in {projLink}</>}</span>;
+    }
+    case 'todo': {
+      const verb =
+        e.payload.action === 'created' ? 'added a todo' :
+        e.payload.action === 'completed' ? 'completed a todo' :
+        e.payload.action === 'reopened' ? 'reopened a todo' :
+        e.payload.action === 'updated' ? 'edited a todo' :
+        'removed a todo';
+      return <span><b>{actor}</b> {verb}{projLink && <> in {projLink}</>}</span>;
+    }
     default: {
       e satisfies never;
       return null;
