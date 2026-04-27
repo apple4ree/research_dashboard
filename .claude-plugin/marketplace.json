@@ -11,22 +11,24 @@
   "plugins": [
     {
       "name": "labhub",
-      "source": "./",
+      "source": "./skills/labhub",
       "description": "Log experiment runs to LabHub from chat. Wraps the LabHub REST API; authenticates via GitHub Device Flow.",
       "version": "0.1.0",
       "category": "research",
+      "strict": true,
       "skills": [
-        "./skills/labhub"
+        "./"
       ]
     },
     {
       "name": "labhub-flow-ingest",
-      "source": "./",
+      "source": "./skills/labhub-flow-ingest",
       "description": "Mirror a research project's progress files into LabHub Flow J view (FlowEvents + task links). Walks <localPath>/progress/<researcher>/progress_*.md, runs LLM extraction, persists rows.",
       "version": "0.1.0",
       "category": "research",
+      "strict": true,
       "skills": [
-        "./skills/labhub-flow-ingest"
+        "./"
       ]
     }
   ]
