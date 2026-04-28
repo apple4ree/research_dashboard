@@ -1,85 +1,26 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeftIcon } from '@primer/octicons-react';
-import { StatusBadge } from '@/components/badges/StatusBadge';
-import { Avatar } from '@/components/people/Avatar';
-import { getMemberByLogin, getRunById } from '@/lib/queries';
+import { prisma } from '@/lib/db';
 import { loadProject } from '@/lib/mock/loaders';
-import { RunActions } from '@/components/runs/RunActions';
+import { ExperimentDetailView } from '@/components/experiments/ExperimentDetailView';
+import { RunDetailView } from '@/components/runs/RunDetailView';
 
-export default async function ProjectRunDetail({
+export default async function ProjectExperimentOrRunDetail({
   params,
 }: {
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = await params;
   const { project } = await loadProject(Promise.resolve({ slug }));
-  const run = await getRunById(id);
-  if (!run || run.projectSlug !== slug) notFound();
-  const actor = await getMemberByLogin(run.triggeredByLogin);
 
-  return (
-    <div className="space-y-4">
-      <Link
-        href={`/projects/${slug}/experiments`}
-        className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline"
-      >
-        <ArrowLeftIcon size={14} /> Back to {project.name} experiments
-      </Link>
-      <div className="flex items-center gap-3 pb-3 border-b border-border-muted">
-        <StatusBadge status={run.status} showLabel />
-        <h1 className="text-lg font-semibold">{run.name}</h1>
-        <div className="ml-auto text-xs text-fg-muted flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <Avatar login={run.triggeredByLogin} size={14} /> {actor?.displayName}
-          </span>
-          <span>
-            {new Date(run.startedAt).toLocaleString('en-US', {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            })}
-          </span>
-          <RunActions run={run} projectSlug={slug} />
-        </div>
-      </div>
-      {run.summary && (
-        <div className="bg-white border border-border-default rounded-md p-4 text-sm">
-          {run.summary}
-        </div>
-      )}
-      <section>
-        <h2 className="text-xs uppercase tracking-wide text-fg-muted font-semibold mb-2">
-          Steps
-        </h2>
-        <ul className="bg-white border border-border-default rounded-md divide-y divide-border-muted">
-          {(run.stepsMock ?? [{ name: 'run', status: run.status }]).map((s, i) => (
-            <li key={i}>
-              <details className="px-4 py-2">
-                <summary className="flex items-center gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                  <StatusBadge status={s.status} />
-                  <span className="font-medium">{s.name}</span>
-                  {s.logSnippet && (
-                    <span className="ml-auto text-xs text-fg-muted">view log</span>
-                  )}
-                </summary>
-                {s.logSnippet && (
-                  <pre className="mt-2 bg-canvas-inset text-xs p-3 rounded-md overflow-x-auto whitespace-pre-wrap">
-                    {s.logSnippet}
-                  </pre>
-                )}
-              </details>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section>
-        <h2 className="text-xs uppercase tracking-wide text-fg-muted font-semibold mb-2">
-          Artifacts
-        </h2>
-        <div className="bg-white border border-border-default rounded-md p-4 text-sm text-fg-muted">
-          No artifacts recorded for this run.
-        </div>
-      </section>
-    </div>
-  );
+  // Same URL surface serves two kinds of details: the new Experiment
+  // group (cuid) or a legacy ExperimentRun (e.g. "exp-1404"). Look up
+  // the cheaper one first; fall through to the run renderer.
+  const experiment = await prisma.experiment.findUnique({ where: { id }, select: { id: true, projectSlug: true } });
+  if (experiment && experiment.projectSlug === slug) {
+    return <ExperimentDetailView slug={slug} experimentId={id} />;
+  }
+
+  const view = await RunDetailView({ slug, id, projectName: project.name });
+  if (!view) notFound();
+  return view;
 }

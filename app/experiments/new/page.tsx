@@ -10,7 +10,7 @@ export default async function NewRunProjectPickerPage({
 }) {
   const { projectSlug } = await searchParams;
   if (projectSlug) {
-    redirect(`/projects/${projectSlug}/experiments/new`);
+    redirect(`/projects/${projectSlug}/runs/new`);
   }
   const projects = await getAllProjects();
 
@@ -30,7 +30,7 @@ export default async function NewRunProjectPickerPage({
         {projects.map(p => (
           <li key={p.slug}>
             <Link
-              href={`/projects/${p.slug}/experiments/new`}
+              href={`/projects/${p.slug}/runs/new`}
               className="px-4 py-3 flex items-start gap-3 hover:bg-canvas-subtle"
             >
               <RepoIcon size={16} className="mt-0.5" />

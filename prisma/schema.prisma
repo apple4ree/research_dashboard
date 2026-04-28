@@ -32,6 +32,7 @@ model Member {
   authoredNotices         Notice[]
   authoredNoticeComments  NoticeComment[]
   wikiStars               WikiEntityStar[]
+  authoredExperiments     Experiment[]
   authoredEvents      ActivityEvent[]
   journalEntries      ResearchEntry[]
 
@@ -126,6 +127,7 @@ model Project {
   wikiEntities WikiEntity[]
   flowEvents   FlowEvent[]
   flowEventTaskLinks FlowEventTaskLink[]
+  experiments  Experiment[]
 }
 
 model ProjectMember {
@@ -187,9 +189,73 @@ model ExperimentRun {
   source           String    @default("internal")
   externalId       String?   @unique
   lastSyncedAt     DateTime?
+  // optional grouping under an Experiment (the bigger "실험 단위")
+  experimentId     String?
 
-  project     Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
-  triggeredBy Member  @relation(fields: [triggeredByLogin], references: [login], onDelete: Restrict)
+  project     Project     @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  triggeredBy Member      @relation(fields: [triggeredByLogin], references: [login], onDelete: Restrict)
+  experiment  Experiment? @relation(fields: [experimentId], references: [id], onDelete: SetNull)
+
+  @@index([experimentId])
+}
+
+// A bigger "실험 단위" — gathers multiple ExperimentRuns + Results under one
+// hypothesis/plan. Wiki entities can be copied here when they describe a
+// concrete experiment rather than a static concept.
+model Experiment {
+  id                 String   @id @default(cuid())
+  projectSlug        String
+  title              String
+  status             String   @default("planned") // 'planned' | 'running' | 'completed' | 'archived'
+  hypothesis         String   @default("")
+  bodyMarkdown       String   @default("")
+  // Provenance: which wiki entity (if any) this was copied from. Both
+  // columns store the source pointer so we can render a "copied from
+  // wiki:foo" backlink without joining at query time.
+  sourceWikiSlug     String?
+  sourceWikiEntityId String?
+  createdByLogin     String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  project   Project            @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  createdBy Member             @relation(fields: [createdByLogin], references: [login], onDelete: Restrict)
+  runs      ExperimentRun[]
+  results   ExperimentResult[]
+
+  @@index([projectSlug, status, createdAt])
+}
+
+model ExperimentResult {
+  id           String   @id @default(cuid())
+  experimentId String
+  title        String
+  summary      String   @default("")
+  metricsJson  String   @default("[]") // JSON [{label, value}]
+  kind         String   @default("benchmark") // 'checkpoint' | 'benchmark' | 'figure-bundle' | 'report' | 'tool'
+  publishedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  experiment  Experiment                   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  attachments ExperimentResultAttachment[]
+
+  @@index([experimentId, publishedAt])
+}
+
+model ExperimentResultAttachment {
+  id               Int      @id @default(autoincrement())
+  resultId         String
+  title            String
+  storedPath       String
+  originalFilename String?
+  mimeType         String?
+  sizeBytes        Int?
+  position         Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  result ExperimentResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  @@index([resultId, position])
 }
 
 // ========== Discussions ==========

@@ -7,6 +7,7 @@ import { MarkdownBody } from '@/components/md/MarkdownBody';
 import { WikiSidebar } from '@/components/wiki/WikiSidebar';
 import { WikiEntityDeleteButton } from '@/components/wiki/WikiEntityDeleteButton';
 import { WikiStarButton } from '@/components/wiki/WikiStarButton';
+import { CopyToExperimentButton } from '@/components/wiki/CopyToExperimentButton';
 import { statusTone } from '@/lib/wiki-status';
 import { getCurrentUserLogin } from '@/lib/session';
 
@@ -86,10 +87,11 @@ export default async function WikiEntityPage({
           <div className="text-xs text-fg-muted">
             {type?.label ?? entity.type} · last synced {entity.lastSyncedAt.toLocaleString('ko-KR')}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center px-2 py-1 rounded-md border border-border-default bg-white">
               <WikiStarButton slug={slug} entityId={entity.id} starred={isStarred} size={14} withLabel />
             </span>
+            <CopyToExperimentButton slug={slug} entityId={entity.id} />
             <Link
               href={`/projects/${slug}/wiki/${encodeURIComponent(entity.id)}/edit`}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border-default text-xs text-fg-muted hover:border-accent-fg hover:text-accent-fg transition-colors"
