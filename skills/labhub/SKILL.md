@@ -312,12 +312,26 @@ curl -fsS -X DELETE "$LABHUB_URL/api/experiments/<expId>" \
 ### `wiki.create` (개념·정의 항목 신설)
 
 Use when the user wants a new wiki entity (concept, definition, attack
-variant, …). The body should follow the Summary / Description /
-Timeline / Cross-references skeleton — same convention as wiki-ingest.
+variant, …). **Body must always carry all four sections** —
+`## Summary`, `## Description`, `## Timeline`, `## Cross-references`.
+The dashboard renders Timeline as a vertical timeline and
+Cross-references as clickable cards; skipping them degrades the page
+and makes future ingest harder.
+
+**Before constructing the payload:**
+
+1. `GET /api/projects/<SLUG>/wiki-types` — confirm a usable
+   `type.key` exists. If types is empty, run `wiki.types.create` first
+   (don't invent a type).
+2. `GET /api/projects/<SLUG>/wiki-entities` — read the light list of
+   existing entities. Pick **1–4 neighbors** for the seed
+   `## Cross-references` based on shared type, chained dependency,
+   contrastive pairing, etc. Don't reference an id that isn't in the
+   light list.
 
 ```bash
 TOKEN=$(jq -r .token "$HOME/.config/labhub/token.json")
-STAMP=$(date -u +%Y%m%d_%H%M)   # for the seed Timeline entry
+STAMP=$(date -u +%Y%m%d_%H%M)   # seed Timeline entry stamp
 
 curl -fsS -X POST "$LABHUB_URL/api/wiki-entities" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -325,18 +339,25 @@ curl -fsS -X POST "$LABHUB_URL/api/wiki-entities" \
 {
   "projectSlug": "<SLUG>",
   "id": "<slug-style id, /^[a-z0-9_-]+$/>",
-  "type": "<must match an existing WikiType.key for this project>",
+  "type": "<existing WikiType.key>",
   "name": "<display name>",
   "status": "active",
   "summaryMarkdown": "<1-2 line overview>",
-  "bodyMarkdown": "## Summary\n<…>\n\n## Description\n<…>\n\n## Timeline\n- [progress:${STAMP}] 첫 등장: <…>\n",
+  "bodyMarkdown": "## Summary\n<…>\n\n## Description\n<…>\n\n## Timeline\n- [progress:${STAMP}] 첫 등장: <…>\n\n## Cross-references\n- [entity:<related-1>] — <한 줄 노트>\n- [entity:<related-2>] — <한 줄 노트>\n",
   "sourceFiles": []
 }
 EOF
 ```
 
-If the project has no WikiTypes yet, prompt the user to create one
-first via `wiki.types.create` (see below) — don't invent one.
+If after honest scanning there are no relevant neighbors (e.g. the
+project's very first entity), still keep the `## Cross-references`
+heading and write `- (없음 — 첫 entity)`. The heading must always
+exist; an empty section is fine, a missing section is not.
+
+**For chat-driven creation (no associated progress file)** the seed
+Timeline entry uses the current time as its stamp (`date -u +%Y%m%d_%H%M`)
+and the note explains where the content came from
+(e.g. `[progress:20260428_1900] 채팅에서 작성: <짧은 요약>`).
 
 ### `wiki.update` (제목·상태·요약·본문 부분 갱신)
 

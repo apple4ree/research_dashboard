@@ -184,8 +184,12 @@ Get the full entity. **LLM step 2 (merge):** input = existing `bodyMarkdown`
 + `newSnippet` + currentFileStamp (e.g. `20260427_1400`). Output = revised
 `bodyMarkdown` and `summaryMarkdown`.
 
-**Body must follow this skeleton** (preserve sections that already exist;
-add new sections only when needed):
+**Body must follow this skeleton — every section is MANDATORY.** Even
+brand-new entities ship with a `## Timeline` (one initial bullet) and a
+`## Cross-references` section (a placeholder bullet listing the most
+plausible neighbor entities — see the cross-ref rule below). The
+dashboard renders Timeline as a vertical timeline and Cross-references
+as clickable cards; missing those sections degrades the page.
 
 ```markdown
 ## Summary
@@ -214,6 +218,25 @@ collapse duplicates. Keep facts; don't speculate.>
   Timeline preserves the trail.
 - Don't speculate beyond the source.
 
+**Cross-references — populate proactively.** Don't leave the section
+empty. For every new or updated entity:
+1. Scan `existingEntities[]` (the light list from Step 1) for relations
+   that the current snippet implies — same domain (same `type`),
+   chained dependencies, related variants, predecessor/successor pairs,
+   contrastive pairs, etc.
+2. Add a `[entity:<id>] — <한 줄 노트>` bullet for each chosen neighbor.
+   Aim for 1–4 cross-refs typical, more only when the entity is a hub.
+3. Don't reference the entity from itself.
+4. Don't invent ids — the slug must already exist in
+   `existingEntities[]`. If you sense a missing concept, mention it in
+   the Description but **do not** add it as a cross-ref bullet.
+
+If after honest scanning there really are zero candidates (the very first
+entity in a fresh project, or an isolated one-off concept), still keep
+the `## Cross-references` heading and write the literal text
+`- (없음 — 첫 entity)`. The heading must always exist; an empty section
+is fine, a missing section is not.
+
 Build payload (sourceFiles dedupes):
 ```json
 {
@@ -230,8 +253,11 @@ Build payload (sourceFiles dedupes):
 
 #### New entity
 LLM already gave type/id/name/snippet. Build the body using the same
-skeleton — Summary + Description + Timeline (with one initial entry citing
-the current progress file). Example:
+skeleton — **Summary + Description + Timeline + Cross-references are all
+required**, even on first creation. Timeline gets one seed entry citing
+the current progress file; Cross-references gets the proactively chosen
+neighbors (or the literal `- (없음 — 첫 entity)` placeholder when there
+genuinely aren't any). Example:
 ```json
 {
   "projectSlug": "<SLUG>",
@@ -240,7 +266,7 @@ the current progress file). Example:
   "name": "<newEntity.name>",
   "status": "active",
   "summaryMarkdown": "<one-sentence summary derived from snippet>",
-  "bodyMarkdown": "## Summary\n<…>\n\n## Description\n<…>\n\n## Timeline\n- [progress:<stamp>] 첫 등장: <…>\n",
+  "bodyMarkdown": "## Summary\n<…>\n\n## Description\n<…>\n\n## Timeline\n- [progress:<stamp>] 첫 등장: <…>\n\n## Cross-references\n- [entity:<related-1>] — <한 줄 노트>\n- [entity:<related-2>] — <한 줄 노트>\n",
   "sourceFiles": ["<currentFileBasename>"]
 }
 ```

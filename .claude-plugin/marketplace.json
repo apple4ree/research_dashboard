@@ -6,14 +6,14 @@
     "name": "damilab"
   },
   "metadata": {
-    "version": "0.9.0"
+    "version": "0.10.0"
   },
   "plugins": [
     {
       "name": "labhub",
       "source": "./skills/labhub",
       "description": "Log experiment runs to LabHub from chat. Wraps the LabHub REST API; authenticates via GitHub Device Flow.",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "category": "research",
       "strict": true,
       "skills": [
@@ -24,7 +24,7 @@
       "name": "labhub-flow-ingest",
       "source": "./skills/labhub-flow-ingest",
       "description": "Mirror a research project's progress files into LabHub Flow J view (FlowEvents + task links). Walks <localPath>/progress/<researcher>/progress_*.md, runs LLM extraction, persists rows.",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "category": "research",
       "strict": true,
       "skills": [
@@ -35,7 +35,7 @@
       "name": "labhub-wiki-ingest",
       "source": "./skills/labhub-wiki-ingest",
       "description": "Mirror a research project's progress files into LabHub Wiki entities. LLM-merge upsert: existing entities accumulate well-edited bodies, new entities are auto-created under existing WikiTypes. Pure HTTP via Bearer token.",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "category": "research",
       "strict": true,
       "skills": [
