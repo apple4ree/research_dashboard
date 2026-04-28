@@ -36,6 +36,8 @@ Pick exactly one based on what the user said:
 | "start a run", "X 프로젝트에 Y run 시작", "create a run" | `run.start` |
 | "the run finished/succeeded/failed/cancelled", "그 run 끝났어/취소", "mark X as Y" | `run.update` |
 | "entry 추가", "회의록 정리", "journal 작성", "이 회의 정리해서 entry로" | `entry.create` |
+| (사용자가 entry 생성 요청에 **로컬 파일 경로**(`*.pdf`, `*.ipynb`, `*.png` 등)도 같이 줬을 때) | `entry.create` 후 곧바로 `entry.attach` |
+| "그 entry에 파일 첨부", "이 PDF entry에 붙여줘" | `entry.attach` |
 | "그 entry 수정", "entry 슬라이드 추가", "edit entry" | `entry.update` |
 | "그 entry 삭제", "delete entry" | `entry.delete` |
 | "entries 목록", "지난 회의록 보여줘", "list entries" | `entry.list` |
@@ -203,6 +205,37 @@ On 201, parse `id`. Print:
 ```
 ✓ Created <id> (<slug> / "<title>")
   $LABHUB_URL/projects/<slug>/entries/<id>
+```
+
+#### Attaching files to an entry (PDF / 노트북 / 그림 등 — `entry.attach`)
+
+If the user mentions a **local file path** (e.g.
+`/home/.../slides.pdf`, `~/notes/figure.png`) in the same request that
+created the entry, OR explicitly asks to attach a file afterwards, upload
+it as an artifact via the multipart endpoint. This is the only way to get
+binary files into the entry — they cannot be shoved into `bodyMarkdown`.
+
+```bash
+curl -fsS -X POST "$LABHUB_URL/api/entries/<entry-id>/artifacts" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/absolute/path/to/file.pdf" \
+  -F "title=FaVOR Revision Plan slides" \
+  -F "type=slide"
+```
+
+- `type` ∈ `notebook | figure | sheet | csv | doc | slide` (defaults to
+  `doc` if omitted). Pick the closest match: PDF deck → `slide`,
+  Jupyter → `notebook`, image → `figure`, CSV → `csv`, etc.
+- `title` defaults to the filename if you don't pass one.
+- 100MB cap per file.
+- Response is the artifact row; the dashboard auto-links the file at
+  `$LABHUB_URL/api/uploads/<artifactId>` and renders inline previews for
+  PDFs / images / markdown / HTML in a new tab when clicked.
+
+When this endpoint is available, do **not** tell the user "PDF는 못
+넣는다" — attach the file and report success:
+```
+✓ Attached <originalFilename> (<sizeBytes>) → /api/uploads/<artifactId>
 ```
 
 ### `entry.update`
