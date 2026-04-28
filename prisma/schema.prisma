@@ -31,6 +31,7 @@ model Member {
   authoredReplies     Reply[]
   authoredNotices         Notice[]
   authoredNoticeComments  NoticeComment[]
+  wikiStars               WikiEntityStar[]
   authoredEvents      ActivityEvent[]
   journalEntries      ResearchEntry[]
 
@@ -414,8 +415,25 @@ model WikiEntity {
 
   project     Project                 @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
   attachments WikiEntityAttachment[]
+  stars       WikiEntityStar[]
   @@id([projectSlug, id])
   @@index([projectSlug, type])
+}
+
+// Per-member favorite/star on a wiki entity. Pinning is local to the
+// member — different lab members can star different entities.
+model WikiEntityStar {
+  memberLogin String
+  projectSlug String
+  entityId    String
+  createdAt   DateTime @default(now())
+
+  member Member     @relation(fields: [memberLogin], references: [login], onDelete: Cascade)
+  entity WikiEntity @relation(fields: [projectSlug, entityId], references: [projectSlug, id], onDelete: Cascade)
+
+  @@id([memberLogin, projectSlug, entityId])
+  @@index([memberLogin, createdAt])
+  @@index([projectSlug, entityId])
 }
 
 model WikiEntityAttachment {

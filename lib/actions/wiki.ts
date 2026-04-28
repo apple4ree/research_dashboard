@@ -6,6 +6,37 @@ import { prisma } from '@/lib/db';
 import { logActivity } from '@/lib/actions/events';
 import { getCurrentUserLogin } from '@/lib/session';
 
+export async function toggleWikiEntityStarAction(
+  projectSlug: string,
+  entityId: string,
+): Promise<{ starred: boolean }> {
+  const memberLogin = await getCurrentUserLogin();
+  if (!memberLogin) return { starred: false };
+
+  const existing = await prisma.wikiEntityStar.findUnique({
+    where: {
+      memberLogin_projectSlug_entityId: { memberLogin, projectSlug, entityId },
+    },
+    select: { memberLogin: true },
+  });
+
+  if (existing) {
+    await prisma.wikiEntityStar.delete({
+      where: {
+        memberLogin_projectSlug_entityId: { memberLogin, projectSlug, entityId },
+      },
+    });
+  } else {
+    await prisma.wikiEntityStar.create({
+      data: { memberLogin, projectSlug, entityId },
+    });
+  }
+
+  revalidatePath(`/projects/${projectSlug}/wiki`);
+  revalidatePath(`/projects/${projectSlug}/wiki/${entityId}`);
+  return { starred: !existing };
+}
+
 const ALLOWED_STATUSES = new Set(['active', 'deprecated', 'superseded']);
 
 function s(fd: FormData, key: string): string {

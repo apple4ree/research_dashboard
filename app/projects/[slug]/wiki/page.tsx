@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { PencilIcon } from '@primer/octicons-react';
+import { PencilIcon, StarFillIcon } from '@primer/octicons-react';
 import { prisma } from '@/lib/db';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { WikiEntityDeleteButton } from '@/components/wiki/WikiEntityDeleteButton';
 import { WikiTypesManager } from '@/components/wiki/WikiTypesManager';
+import { WikiStarButton } from '@/components/wiki/WikiStarButton';
+import { WikiSearchBox } from '@/components/wiki/WikiSearchBox';
 import { statusTone } from '@/lib/wiki-status';
+import { getCurrentUserLogin } from '@/lib/session';
 
 // "New!" badge fades linearly over 72h from lastSyncedAt → returns 0..1.
 function newnessFromDate(d: Date): number {
@@ -17,37 +20,86 @@ function newnessFromDate(d: Date): number {
 
 function snippet(md: string, max = 220): string {
   if (!md) return '';
-  // Strip markdown chars lightly so the preview doesn't show **stars** etc.
   const plain = md
-    .replace(/```[\s\S]*?```/g, '')           // fenced code
-    .replace(/`([^`]+)`/g, '$1')              // inline code
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')     // images
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')  // links
-    .replace(/[*_>#~]/g, '')                  // emphasis / quote / heading
-    .replace(/\s+/g, ' ')                     // collapse whitespace
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*_>#~]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
   return plain.length > max ? plain.slice(0, max).trimEnd() + '…' : plain;
 }
 
+/** Pull a ~120 char excerpt around the first match of `q` in the text. */
+function searchSnippet(text: string, q: string, around = 60): string | null {
+  if (!text || !q) return null;
+  const lower = text.toLowerCase();
+  const idx = lower.indexOf(q.toLowerCase());
+  if (idx < 0) return null;
+  const start = Math.max(0, idx - around);
+  const end = Math.min(text.length, idx + q.length + around);
+  const prefix = start > 0 ? '…' : '';
+  const suffix = end < text.length ? '…' : '';
+  return prefix + text.slice(start, end).replace(/\s+/g, ' ').trim() + suffix;
+}
+
+type Entity = {
+  projectSlug: string;
+  id: string;
+  type: string;
+  name: string;
+  status: string;
+  summaryMarkdown: string;
+  bodyMarkdown: string;
+  lastSyncedAt: Date;
+};
+
 export default async function ProjectWikiIndex({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
+  const query = (sp.q ?? '').trim();
   const project = await prisma.project.findUnique({ where: { slug } });
   if (!project) notFound();
 
-  const [types, entities] = await Promise.all([
+  const me = await getCurrentUserLogin();
+
+  const [types, entities, myStarsRaw] = await Promise.all([
     prisma.wikiType.findMany({
       where: { projectSlug: slug },
       orderBy: { position: 'asc' },
     }),
     prisma.wikiEntity.findMany({
-      where: { projectSlug: slug },
+      where: query
+        ? {
+            projectSlug: slug,
+            OR: [
+              { name: { contains: query } },
+              { summaryMarkdown: { contains: query } },
+              { bodyMarkdown: { contains: query } },
+              { id: { contains: query } },
+            ],
+          }
+        : { projectSlug: slug },
       orderBy: [{ type: 'asc' }, { id: 'asc' }],
     }),
+    me
+      ? prisma.wikiEntityStar.findMany({
+          where: { memberLogin: me, projectSlug: slug },
+          select: { entityId: true },
+        })
+      : Promise.resolve([] as { entityId: string }[]),
   ]);
+
+  const starredIds = new Set(myStarsRaw.map(s => s.entityId));
+
+  const typeLabelByKey = new Map(types.map(t => [t.key, t.label] as const));
 
   if (types.length === 0) {
     return (
@@ -64,26 +116,134 @@ export default async function ProjectWikiIndex({
     );
   }
 
-  const byType = new Map<string, typeof entities>();
-  for (const t of types) byType.set(t.key, []);
-  for (const e of entities) byType.get(e.type)?.push(e);
-
   const lastSync = entities.reduce<Date | null>((acc, e) => {
     if (!acc || e.lastSyncedAt > acc) return e.lastSyncedAt;
     return acc;
   }, null);
 
+  const renderCard = (e: Entity, opts: { showSearchSnippet?: boolean } = {}) => {
+    const newness = newnessFromDate(e.lastSyncedAt);
+    const isStarred = starredIds.has(e.id);
+    const matchSnippet = opts.showSearchSnippet && query
+      ? searchSnippet(e.bodyMarkdown, query) ?? searchSnippet(e.summaryMarkdown, query)
+      : null;
+    return (
+      <li key={e.id} className="relative group">
+        <Link
+          href={`/projects/${slug}/wiki/${encodeURIComponent(e.id)}`}
+          className="relative block bg-white rounded-md p-5 hover:bg-canvas-subtle transition-colors"
+        >
+          {newness > 0 && (
+            <span
+              className="absolute top-1 left-1 bg-danger-fg text-white text-[9px] font-semibold px-1 py-px rounded-full shadow-sm leading-none"
+              style={{ opacity: newness }}
+            >
+              New!
+            </span>
+          )}
+          <div className="flex items-center gap-2 mb-2 pr-24">
+            <span className="font-mono text-base font-semibold text-fg-default">{e.name}</span>
+            <LabelChip tone={statusTone(e.status)}>{e.status}</LabelChip>
+            {opts.showSearchSnippet && (
+              <span className="text-[10px] text-fg-muted uppercase tracking-wider">
+                {typeLabelByKey.get(e.type) ?? e.type}
+              </span>
+            )}
+          </div>
+          {matchSnippet ? (
+            <p className="text-sm text-fg-muted leading-relaxed line-clamp-3">
+              {matchSnippet}
+            </p>
+          ) : e.summaryMarkdown ? (
+            <p className="text-sm text-fg-muted leading-relaxed line-clamp-3">
+              {snippet(e.summaryMarkdown)}
+            </p>
+          ) : null}
+        </Link>
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+          <span
+            className={`${
+              isStarred
+                ? 'opacity-100'
+                : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+            } transition-opacity bg-white rounded shadow-sm border border-border-muted px-1.5 py-1`}
+          >
+            <WikiStarButton slug={slug} entityId={e.id} starred={isStarred} size={14} />
+          </span>
+          <span className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-1">
+            <Link
+              href={`/projects/${slug}/wiki/${encodeURIComponent(e.id)}/edit`}
+              aria-label={`Edit ${e.name}`}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-fg-muted hover:text-accent-fg bg-white rounded shadow-sm border border-border-muted hover:border-accent-fg"
+            >
+              <PencilIcon size={12} /> 편집
+            </Link>
+            <WikiEntityDeleteButton slug={slug} id={e.id} />
+          </span>
+        </div>
+      </li>
+    );
+  };
+
+  // ── Search-result mode ──────────────────────────────────────────────
+  if (query) {
+    return (
+      <div className="max-w-5xl mx-auto py-2 space-y-6">
+        <header>
+          <h2 className="text-2xl font-semibold tracking-tight">Wiki</h2>
+          <p className="text-sm text-fg-muted mt-1">
+            검색 결과 — <strong>“{query}”</strong> · {entities.length}건
+          </p>
+        </header>
+        <WikiSearchBox slug={slug} defaultQuery={query} />
+        {entities.length === 0 ? (
+          <div className="text-sm text-fg-muted italic">일치하는 항목이 없습니다.</div>
+        ) : (
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 list-none pl-0">
+            {entities.map(e => renderCard(e, { showSearchSnippet: true }))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  // ── Normal mode ─────────────────────────────────────────────────────
+  const starred = entities.filter(e => starredIds.has(e.id));
+  const byType = new Map<string, Entity[]>();
+  for (const t of types) byType.set(t.key, []);
+  for (const e of entities) byType.get(e.type)?.push(e);
+
   return (
     <div className="max-w-5xl mx-auto py-2 space-y-10">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Wiki</h2>
-        <p className="text-sm text-fg-muted mt-1">
-          {entities.length} entities · {types.length} types
-          {lastSync && ` · last synced ${lastSync.toLocaleString('ko-KR')}`}
-        </p>
+      <header className="space-y-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Wiki</h2>
+          <p className="text-sm text-fg-muted mt-1">
+            {entities.length} entities · {types.length} types
+            {lastSync && ` · last synced ${lastSync.toLocaleString('ko-KR')}`}
+          </p>
+        </div>
+        <WikiSearchBox slug={slug} defaultQuery="" />
       </header>
 
       <WikiTypesManager slug={slug} types={types} />
+
+      {starred.length > 0 && (
+        <section>
+          <div className="flex items-baseline gap-2 mb-4">
+            <h3 className="text-lg font-semibold inline-flex items-center gap-1.5">
+              <span className="text-attention-fg">
+                <StarFillIcon size={16} />
+              </span>
+              즐겨찾기
+            </h3>
+            <span className="text-sm text-fg-muted">{starred.length}</span>
+          </div>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 list-none pl-0">
+            {starred.map(e => renderCard(e))}
+          </ul>
+        </section>
+      )}
 
       {types.map(t => {
         const list = byType.get(t.key) ?? [];
@@ -96,46 +256,8 @@ export default async function ProjectWikiIndex({
             {list.length === 0 ? (
               <div className="text-sm text-fg-muted italic">none yet</div>
             ) : (
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 list-none">
-                {list.map(e => {
-                  const newness = newnessFromDate(e.lastSyncedAt);
-                  return (
-                  <li key={e.id} className="relative group">
-                    <Link
-                      href={`/projects/${slug}/wiki/${encodeURIComponent(e.id)}`}
-                      className="relative block bg-white rounded-md p-5 hover:bg-canvas-subtle transition-colors"
-                    >
-                      {newness > 0 && (
-                        <span
-                          className="absolute top-1 left-1 bg-danger-fg text-white text-[9px] font-semibold px-1 py-px rounded-full shadow-sm leading-none"
-                          style={{ opacity: newness }}
-                        >
-                          New!
-                        </span>
-                      )}
-                      <div className="flex items-center gap-2 mb-2 pr-20">
-                        <span className="font-mono text-base font-semibold text-fg-default">{e.name}</span>
-                        <LabelChip tone={statusTone(e.status)}>{e.status}</LabelChip>
-                      </div>
-                      {e.summaryMarkdown && (
-                        <p className="text-sm text-fg-muted leading-relaxed line-clamp-3">
-                          {snippet(e.summaryMarkdown)}
-                        </p>
-                      )}
-                    </Link>
-                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                      <Link
-                        href={`/projects/${slug}/wiki/${encodeURIComponent(e.id)}/edit`}
-                        aria-label={`Edit ${e.name}`}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-fg-muted hover:text-accent-fg bg-white rounded shadow-sm border border-border-muted hover:border-accent-fg"
-                      >
-                        <PencilIcon size={12} /> 편집
-                      </Link>
-                      <WikiEntityDeleteButton slug={slug} id={e.id} />
-                    </div>
-                  </li>
-                  );
-                })}
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 list-none pl-0">
+                {list.map(e => renderCard(e))}
               </ul>
             )}
           </section>
