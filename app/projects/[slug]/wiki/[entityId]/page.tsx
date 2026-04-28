@@ -8,6 +8,7 @@ import { WikiSidebar } from '@/components/wiki/WikiSidebar';
 import { WikiEntityDeleteButton } from '@/components/wiki/WikiEntityDeleteButton';
 import { WikiStarButton } from '@/components/wiki/WikiStarButton';
 import { CopyToExperimentButton } from '@/components/wiki/CopyToExperimentButton';
+import { WikiBodyRender } from '@/components/wiki/WikiBodyRender';
 import { statusTone } from '@/lib/wiki-status';
 import { getCurrentUserLogin } from '@/lib/session';
 
@@ -123,11 +124,12 @@ export default async function WikiEntityPage({
         )}
 
         <section className="bg-white rounded-md py-2">
-          <MarkdownBody
+          <WikiBodyRender
             source={entity.bodyMarkdown}
-            size="base"
-            wikiSlug={slug}
-            wikiEntityIds={entityIds}
+            projectSlug={slug}
+            entityIds={entityIds}
+            entitiesById={new Map(allEntities.map(e => [e.id, e]))}
+            typeLabelByKey={new Map(types.map(t => [t.key, t.label]))}
           />
         </section>
 
