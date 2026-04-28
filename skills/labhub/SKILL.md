@@ -44,6 +44,12 @@ Pick exactly one based on what the user said:
 | "experiment 만들어", "ablation 실험 묶음 만들어", "X 실험 시작 (큰 단위)" | `experiment.create` |
 | "그 experiment에 결과 추가", "metric 0.305 등록", "checkpoint 첨부" | `result.create` (또는 `result.attach`) |
 | "experiment 수정 / 삭제 / 목록" | `experiment.update` / `experiment.delete` / `experiment.list` |
+| "wiki에 새 entity 만들어", "wiki에 X 추가해" | `wiki.create` |
+| "wiki:X 수정 / 본문 갱신 / 상태 바꿔" | `wiki.update` |
+| "wiki:X 의 Timeline에 ... 한 줄 추가" | `wiki.timeline.append` |
+| "wiki:X 의 Cross-references에 entity:Y 추가" | `wiki.crossref.add` |
+| "wiki:X 삭제" | `wiki.delete` |
+| "wiki types 보여줘 / wiki 검색" | `wiki.types.list` / `wiki.list` |
 | "milestone 추가", "마일스톤 추가" | `milestone.create` |
 | "milestone 수정/삭제/보여줘" | `milestone.update` / `milestone.delete` / `milestone.list` |
 | "todo 추가" | `todo.create` |
@@ -302,6 +308,139 @@ curl -fsS -X PATCH "$LABHUB_URL/api/experiments/<expId>" \
 curl -fsS -X DELETE "$LABHUB_URL/api/experiments/<expId>" \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+### `wiki.create` (개념·정의 항목 신설)
+
+Use when the user wants a new wiki entity (concept, definition, attack
+variant, …). The body should follow the Summary / Description /
+Timeline / Cross-references skeleton — same convention as wiki-ingest.
+
+```bash
+TOKEN=$(jq -r .token "$HOME/.config/labhub/token.json")
+STAMP=$(date -u +%Y%m%d_%H%M)   # for the seed Timeline entry
+
+curl -fsS -X POST "$LABHUB_URL/api/wiki-entities" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d @- <<EOF
+{
+  "projectSlug": "<SLUG>",
+  "id": "<slug-style id, /^[a-z0-9_-]+$/>",
+  "type": "<must match an existing WikiType.key for this project>",
+  "name": "<display name>",
+  "status": "active",
+  "summaryMarkdown": "<1-2 line overview>",
+  "bodyMarkdown": "## Summary\n<…>\n\n## Description\n<…>\n\n## Timeline\n- [progress:${STAMP}] 첫 등장: <…>\n",
+  "sourceFiles": []
+}
+EOF
+```
+
+If the project has no WikiTypes yet, prompt the user to create one
+first via `wiki.types.create` (see below) — don't invent one.
+
+### `wiki.update` (제목·상태·요약·본문 부분 갱신)
+
+```bash
+curl -fsS -X PATCH "$LABHUB_URL/api/projects/<SLUG>/wiki-entities/<entityId>" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{ "name": "...", "status": "active|deprecated|superseded",
+        "summaryMarkdown": "...", "bodyMarkdown": "...whole body..." }'
+```
+
+PATCH ignores `sourceFiles` — that's ingest territory.
+
+### `wiki.timeline.append` (Timeline에 한 줄 누적)
+
+Convenience flow for "[entityId]의 Timeline에 'X' 추가해줘" style requests.
+The Timeline is **append-only by convention** — you read the body, add a
+new bullet, write it back. Don't delete prior entries; if the user is
+correcting a fact, the new line should mention the conflict.
+
+```bash
+TOKEN=$(jq -r .token "$HOME/.config/labhub/token.json")
+STAMP=$(date -u +%Y%m%d_%H%M)
+NEW_LINE="- [progress:${STAMP}] <노트>"
+
+# 1) Read current body.
+BODY=$(curl -fsS -H "Authorization: Bearer $TOKEN" \
+  "$LABHUB_URL/api/projects/<SLUG>/wiki-entities/<entityId>" | jq -r .bodyMarkdown)
+
+# 2) Insert NEW_LINE under the "## Timeline" heading. If no Timeline
+#    section exists yet, append one at the end. Use node for safe insertion.
+NEW_BODY=$(node -e '
+  const body = process.argv[1];
+  const line = process.argv[2];
+  const lines = body.split("\n");
+  const idx = lines.findIndex(l => /^##\s+timeline\s*$/i.test(l.trim()));
+  if (idx === -1) {
+    process.stdout.write(body.trimEnd() + "\n\n## Timeline\n" + line + "\n");
+  } else {
+    // Find end of Timeline section (next ## or EOF), append before it.
+    let end = lines.length;
+    for (let i = idx + 1; i < lines.length; i++) {
+      if (/^##\s+/.test(lines[i].trim())) { end = i; break; }
+    }
+    // Insert at end of section, after any existing bullets.
+    lines.splice(end, 0, line);
+    process.stdout.write(lines.join("\n"));
+  }
+' "$BODY" "$NEW_LINE")
+
+# 3) PATCH back.
+curl -fsS -X PATCH "$LABHUB_URL/api/projects/<SLUG>/wiki-entities/<entityId>" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "$(node -e 'console.log(JSON.stringify({bodyMarkdown: process.argv[1]}))' -- "$NEW_BODY")"
+```
+
+If the user explicitly references a progress file (e.g. "
+progress_20260428_2030.md 기준으로 한 줄 추가"), use that file's stamp
+instead of `$STAMP`.
+
+### `wiki.crossref.add` (Cross-references에 entity 한 줄 추가)
+
+Same shape as Timeline append, but the bullet is `- [entity:<otherId>]
+— <짧은 노트>` and the section is `## Cross-references`. If the
+referenced entity doesn't exist in this project, surface the warning
+("wiki에 그런 entity 없음 — 그래도 추가할까요?") and ask before writing.
+
+### `wiki.delete`
+
+```bash
+curl -fsS -X DELETE "$LABHUB_URL/api/projects/<SLUG>/wiki-entities/<entityId>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### `wiki.types.list` / `wiki.types.create`
+
+```bash
+# list types
+curl -fsS -H "Authorization: Bearer $TOKEN" \
+  "$LABHUB_URL/api/projects/<SLUG>/wiki-types"
+
+# create
+curl -fsS -X POST "$LABHUB_URL/api/wiki-types" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"projectSlug":"<SLUG>","key":"attack","label":"Attacks","description":"공격 변종"}'
+```
+
+### `wiki.list` (검색 / 필터)
+
+```bash
+# list all entities for a project
+curl -fsS -H "Authorization: Bearer $TOKEN" \
+  "$LABHUB_URL/api/projects/<SLUG>/wiki-entities"
+```
+
+The light list omits `bodyMarkdown` — for full body fetch by id:
+```bash
+curl -fsS -H "Authorization: Bearer $TOKEN" \
+  "$LABHUB_URL/api/projects/<SLUG>/wiki-entities/<entityId>"
+```
+
+For free-text search, ask the user to search in the dashboard
+(`/projects/<SLUG>/wiki?q=<keyword>`); the API doesn't expose a
+`q=` filter. **Never grep through bodyMarkdown locally and miss hits**
+— defer to the dashboard search.
 
 ### `entry.update`
 
