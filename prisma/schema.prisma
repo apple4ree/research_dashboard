@@ -29,7 +29,8 @@ model Member {
   triggeredRuns       ExperimentRun[]
   authoredDiscussions Discussion[]
   authoredReplies     Reply[]
-  authoredNotices     Notice[]
+  authoredNotices         Notice[]
+  authoredNoticeComments  NoticeComment[]
   authoredEvents      ActivityEvent[]
   journalEntries      ResearchEntry[]
 
@@ -225,8 +226,9 @@ model Reply {
   author     Member     @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
 }
 
-// Site-wide announcements / changelog. Lighter than Discussion (no replies)
-// and not project-scoped — they appear in TopNav so every member sees them.
+// Site-wide announcements / changelog. Not project-scoped — they appear
+// in TopNav so every member sees them. Threaded discussion happens via
+// NoticeComment.
 model Notice {
   id           String   @id @default(cuid())
   title        String
@@ -237,9 +239,23 @@ model Notice {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  author Member @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+  author   Member          @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+  comments NoticeComment[]
 
   @@index([pinned, createdAt])
+}
+
+model NoticeComment {
+  id           String   @id @default(cuid())
+  noticeId     String
+  authorLogin  String
+  bodyMarkdown String
+  createdAt    DateTime @default(now())
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  author Member @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+
+  @@index([noticeId, createdAt])
 }
 
 // ========== Releases ==========

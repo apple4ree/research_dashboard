@@ -76,3 +76,26 @@ export async function deleteNoticeAction(id: string): Promise<void> {
   revalidatePath('/');
   redirect('/notices');
 }
+
+export async function addNoticeCommentAction(noticeId: string, formData: FormData): Promise<void> {
+  const body = s(formData, 'bodyMarkdown').trim();
+  if (!body) return;
+
+  const authorLogin = await getCurrentUserLogin();
+  if (!authorLogin) return;
+
+  const notice = await prisma.notice.findUnique({ where: { id: noticeId }, select: { id: true } });
+  if (!notice) return;
+
+  await prisma.noticeComment.create({
+    data: { noticeId, authorLogin, bodyMarkdown: body },
+  });
+
+  revalidatePath(`/notices/${noticeId}`);
+  revalidatePath('/notices');
+}
+
+export async function deleteNoticeCommentAction(noticeId: string, commentId: string): Promise<void> {
+  await prisma.noticeComment.deleteMany({ where: { id: commentId, noticeId } });
+  revalidatePath(`/notices/${noticeId}`);
+}

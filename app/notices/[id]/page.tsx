@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeftIcon, PencilIcon, PinIcon } from '@primer/octicons-react';
+import { ArrowLeftIcon, CommentIcon, PencilIcon, PinIcon } from '@primer/octicons-react';
 import { prisma } from '@/lib/db';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { Avatar } from '@/components/people/Avatar';
 import { MarkdownBody } from '@/components/md/MarkdownBody';
 import { NoticeDeleteButton } from '@/components/notices/NoticeDeleteButton';
+import { NoticeCommentForm } from '@/components/notices/NoticeCommentForm';
+import { NoticeCommentDeleteButton } from '@/components/notices/NoticeCommentDeleteButton';
 import { relTime, requestNow } from '@/lib/time';
 import {
   NOTICE_CATEGORY_LABELS,
@@ -17,7 +19,13 @@ export default async function NoticeDetail({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const n = await prisma.notice.findUnique({
     where: { id },
-    include: { author: { select: { displayName: true, login: true } } },
+    include: {
+      author: { select: { displayName: true, login: true } },
+      comments: {
+        orderBy: { createdAt: 'asc' },
+        include: { author: { select: { displayName: true, login: true } } },
+      },
+    },
   });
   if (!n) notFound();
 
@@ -64,6 +72,42 @@ export default async function NoticeDetail({ params }: { params: Promise<{ id: s
 
       <section className="bg-white border border-border-default rounded-md p-6">
         <MarkdownBody source={n.bodyMarkdown} size="base" />
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-fg-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+          <CommentIcon size={14} /> 댓글 ({n.comments.length})
+        </h2>
+        {n.comments.length === 0 ? (
+          <p className="text-sm text-fg-muted italic mb-6">
+            아직 댓글이 없습니다. 가장 먼저 의견을 남겨보세요.
+          </p>
+        ) : (
+          <ul className="list-none pl-0 space-y-3 mb-6">
+            {n.comments.map(c => (
+              <li
+                key={c.id}
+                className="bg-white border border-border-default rounded-md p-4"
+              >
+                <div className="flex items-center gap-2 text-xs text-fg-muted mb-2">
+                  <Avatar login={c.authorLogin} size={16} />
+                  <span className="font-medium text-fg-default">
+                    {c.author?.displayName ?? c.authorLogin}
+                  </span>
+                  <span>· {relTime(c.createdAt.toISOString(), now)}</span>
+                  <div className="ml-auto">
+                    <NoticeCommentDeleteButton noticeId={n.id} commentId={c.id} />
+                  </div>
+                </div>
+                <MarkdownBody source={c.bodyMarkdown} size="sm" />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="bg-white border border-border-default rounded-md p-4">
+          <NoticeCommentForm noticeId={n.id} />
+        </div>
       </section>
     </article>
   );

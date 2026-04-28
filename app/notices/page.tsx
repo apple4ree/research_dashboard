@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PlusIcon, PinIcon } from '@primer/octicons-react';
+import { PlusIcon, PinIcon, CommentIcon } from '@primer/octicons-react';
 import { prisma } from '@/lib/db';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { Avatar } from '@/components/people/Avatar';
@@ -15,6 +15,7 @@ export default async function NoticesPage() {
     orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
     include: {
       author: { select: { displayName: true, login: true } },
+      _count: { select: { comments: true } },
     },
   });
 
@@ -62,12 +63,17 @@ export default async function NoticesPage() {
                     </LabelChip>
                     <span className="font-medium text-sm">{n.title}</span>
                   </div>
-                  <div className="text-xs text-fg-muted mt-1 flex items-center gap-2">
+                  <div className="text-xs text-fg-muted mt-1 flex items-center gap-2 flex-wrap">
                     <Avatar login={n.authorLogin} size={14} />
                     <span>{n.author?.displayName ?? n.authorLogin}</span>
                     <span>· {relTime(n.createdAt.toISOString(), now)}</span>
                     {n.updatedAt.getTime() - n.createdAt.getTime() > 1000 && (
                       <span>· edited {relTime(n.updatedAt.toISOString(), now)}</span>
+                    )}
+                    {n._count.comments > 0 && (
+                      <span className="inline-flex items-center gap-1 ml-1">
+                        <CommentIcon size={12} /> {n._count.comments}
+                      </span>
                     )}
                   </div>
                 </Link>
