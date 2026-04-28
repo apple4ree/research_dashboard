@@ -85,6 +85,43 @@ curl -fsSL -H "Authorization: Bearer $TOKEN" \
 If 404 `project_not_found`, stop. If 401, token expired mid-run — ask user to
 `/labhub login` again.
 
+## Step 1.5 — Style calibration (always run before extraction)
+
+Before generating any payload, **read three sources** so the new wiki
+matches the lab's existing voice instead of imposing a generic one:
+
+1. **The current chat session.** Did the user state explicit preferences
+   in this conversation? ("Description은 한국어로", "Timeline은 영어
+   불릿", "section은 Summary/Description만, Cross-references 생략",
+   "metric은 항상 소수점 3자리"…) These override defaults and persist
+   for every entity in this run.
+2. **The light list from `GET /api/projects/<slug>/wiki-entities`** —
+   skim the first 5 entities of each existing type. Note:
+   - Name format (snake_case vs Title Case, Korean vs English)
+   - Summary length and tone (one short sentence vs paragraph)
+   - Status distribution (does this project actually use `deprecated`?
+     If not, default to `active` always.)
+3. **One full body sample** — pick the most recent entity of the same
+   type and call `GET .../wiki-entities/<id>`. Use its body to gauge:
+   - Section depth (does the lab fill all of Summary / Description /
+     Timeline / Cross-references, or just two of them?)
+   - Citation density in Description (mostly raw text vs many
+     `[progress:…]` and `[entity:…]` references)
+   - Bullet style in Timeline (short verb-led vs full-sentence)
+
+When constructing payloads in Step 3b/3c, **mirror those conventions**:
+copy the lab's tone, terminology, and section structure rather than
+generating a textbook-style write-up.
+
+The Skeleton (Summary / Description / Timeline / Cross-references) and
+the citation rules (`[progress:…]`, append-only Timeline,
+contradiction-preservation) are **non-negotiable** and apply on top of
+calibrated style.
+
+If session and existing data conflict, **session preferences win** —
+note the deviation in the summary report so the user is aware
+("session 지침에 따라 Cross-references 섹션을 생략했습니다").
+
 ## Step 2 — Walk local progress dir
 
 From cwd:

@@ -61,6 +61,38 @@ curl -fsSL -H "Authorization: Bearer $TOKEN" \
 If either call returns 404 `project_not_found`, stop and tell the user the
 slug is wrong. If 401, the token expired mid-run — `/labhub login` again.
 
+## Step 1.5 — Style calibration (always run before extraction)
+
+Before generating any payload, **read three sources** to match the lab's
+in-use voice:
+
+1. **The current chat session.** Has the user, in this conversation,
+   stated explicit preferences? ("짧은 bullets만", "한국어로", "metric은
+   소수점 3자리 고정", "tone은 항상 result로 통일"…) These override
+   defaults. Persist them across all files in this run.
+2. **The latest entries of `GET /api/projects/<slug>/flow-events`** (the
+   first 5 items of the light list). Note:
+   - Title length & language mix (e.g., "v4 fresh 25-iter 완료" → 한·영
+     혼용 짧은 형식)
+   - Tone distribution (does this project tend to use `result` more than
+     `milestone`? If a new file is borderline, lean toward the project's
+     dominant tone.)
+   - Source filename pattern.
+3. **One full body sample** — pick the most recent ingested event and
+   call `GET .../flow-events` then look at any `bodyMarkdown` in the
+   sample if needed. Use it to gauge bullet length, summary length, and
+   number formatting (e.g., `"0.305"` vs `"30.5%"`, `"WR=0.62"` vs
+   `"WR 0.62"`).
+
+When constructing payloads in Step 3b, **mirror those conventions**: the
+goal is that a lab member reading the new event card can't tell whether
+it was written by the human or by the skill. Don't impose a generic
+voice; copy the lab's voice.
+
+If session and existing data conflict, **session preferences win** —
+but say so in the summary report so the user knows ("session 지침에
+따라 한국어로 통일했습니다 — 기존 한·영 혼용과 다름").
+
 ## Step 2 — Walk local progress dir
 
 From the user's current working directory, glob:
