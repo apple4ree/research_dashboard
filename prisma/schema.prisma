@@ -412,9 +412,26 @@ model WikiEntity {
   lastSyncedAt    DateTime
   source          String   @default("wiki-llm")
 
-  project Project @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  project     Project                 @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  attachments WikiEntityAttachment[]
   @@id([projectSlug, id])
   @@index([projectSlug, type])
+}
+
+model WikiEntityAttachment {
+  id               Int      @id @default(autoincrement())
+  projectSlug      String
+  entityId         String
+  title            String
+  storedPath       String
+  originalFilename String?
+  mimeType         String?
+  sizeBytes        Int?
+  position         Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  entity WikiEntity @relation(fields: [projectSlug, entityId], references: [projectSlug, id], onDelete: Cascade)
+  @@index([projectSlug, entityId, position])
 }
 
 // ========== Flow J view (event timeline + task kanban) ==========
@@ -443,11 +460,27 @@ model FlowEvent {
   bodyMarkdown String? // optional copy of the source progress_*.md body sent at ingest time
   position    Int      @default(0)
 
-  project   Project             @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
-  comments  FlowEventComment[]
-  taskLinks FlowEventTaskLink[]
+  project     Project                @relation(fields: [projectSlug], references: [slug], onDelete: Cascade)
+  comments    FlowEventComment[]
+  taskLinks   FlowEventTaskLink[]
+  attachments FlowEventAttachment[]
   @@index([projectSlug, source])
   @@index([projectSlug, date])
+}
+
+model FlowEventAttachment {
+  id               Int      @id @default(autoincrement())
+  flowEventId      Int
+  title            String
+  storedPath       String
+  originalFilename String?
+  mimeType         String?
+  sizeBytes        Int?
+  position         Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  flowEvent FlowEvent @relation(fields: [flowEventId], references: [id], onDelete: Cascade)
+  @@index([flowEventId, position])
 }
 
 model FlowEventComment {

@@ -133,6 +133,33 @@ export function TimelineCard({ event }: { event: FlowEvent }) {
           </div>
         </details>
       )}
+      {event.attachments && event.attachments.length > 0 && (
+        <div className="mt-3 border-t border-border-muted pt-2 flex flex-wrap gap-1.5">
+          {event.attachments.map(a => {
+            const isImage = (a.mimeType ?? '').toLowerCase().startsWith('image/');
+            const inlineable =
+              isImage ||
+              (a.mimeType ?? '').toLowerCase().startsWith('text/') ||
+              a.mimeType === 'application/pdf' ||
+              /\.(md|html?|txt|json|csv|tsv|log|pdf|png|jpe?g|gif|webp|svg)$/i.test(
+                a.originalFilename ?? '',
+              );
+            return (
+              <a
+                key={a.id}
+                href={inlineable ? `${a.href}?inline=1` : a.href}
+                target={inlineable ? '_blank' : undefined}
+                rel={inlineable ? 'noopener noreferrer' : undefined}
+                title={a.originalFilename ?? a.title}
+                className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-canvas-subtle hover:bg-canvas-default border border-border-muted rounded font-mono text-fg-muted hover:text-accent-fg max-w-full"
+              >
+                <span className="text-sm">{isImage ? '🖼' : '📎'}</span>
+                <span className="truncate">{a.title}</span>
+              </a>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

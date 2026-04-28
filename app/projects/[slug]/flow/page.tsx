@@ -71,6 +71,18 @@ export default async function ProjectFlowPage({
     prisma.flowEvent.findMany({
       where: { projectSlug: slug },
       orderBy: [{ date: 'desc' }, { position: 'desc' }],
+      include: {
+        attachments: {
+          orderBy: { position: 'asc' },
+          select: {
+            id: true,
+            title: true,
+            originalFilename: true,
+            mimeType: true,
+            sizeBytes: true,
+          },
+        },
+      },
     }),
     prisma.flowEventComment.findMany({
       where: { flowEvent: { projectSlug: slug } },
@@ -96,6 +108,14 @@ export default async function ProjectFlowPage({
     numbers: r.numbers ? JSON.parse(r.numbers) : undefined,
     tags: r.tags ? JSON.parse(r.tags) : undefined,
     bodyMarkdown: r.bodyMarkdown,
+    attachments: r.attachments.map(a => ({
+      id: a.id,
+      title: a.title,
+      href: `/api/flow-event-attachments/${a.id}`,
+      originalFilename: a.originalFilename,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+    })),
   }));
   const enrichedEvents = await enrichWithSource(dbEvents, project.localPath);
   const eventIdBySource: Record<string, number> = {};

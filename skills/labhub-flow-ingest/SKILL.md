@@ -116,6 +116,30 @@ card's "원본 progress.md 보기" expandable so any lab member can see the
 note even if they don't have the file on their laptop. Cap is 1MB; truncate
 or skip the field for unusually large files.
 
+### 3d. Attach figures referenced by the progress note (optional)
+
+If the progress markdown references images / plots / PDFs that live
+beside it (e.g. `![curves](./figures/v4_iter25.png)` or `attached:
+./report.pdf`), upload each one to the event right after the POST that
+created it. This keeps the figure visible to lab members who don't have
+the file on their laptop.
+
+```bash
+curl -fsS -X POST "$LABHUB_URL/api/flow-events/<eventId>/attachments" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/absolute/path/to/figure.png" \
+  -F "title=v4 iter25 reward curve"
+```
+
+- 100MB cap per file. Skip files larger than that and note in the summary.
+- `title` defaults to filename if omitted. For figures, prefer a short
+  human-readable label.
+- The dashboard renders attachments as chips below the event card; PDFs
+  / images / markdown open in a new tab on click.
+
+Resolve the path relative to the progress file's directory. Don't
+attempt to download remote URLs — only walk local disk.
+
 **Tone — pick exactly one** (overlap is fine; pick the central change):
 
 | Tone | When |

@@ -37,7 +37,9 @@ export default function middleware(req: NextRequest) {
     pathname.startsWith('/api/milestones') ||
     pathname.startsWith('/api/todos') ||
     pathname.startsWith('/api/flow-events') ||
+    pathname.startsWith('/api/flow-event-attachments') ||
     pathname.startsWith('/api/wiki-entities') ||
+    pathname.startsWith('/api/wiki-entity-attachments') ||
     pathname.startsWith('/api/wiki-types') ||
     /^\/api\/projects\/[^/]+\/(entries|milestones|todos|flow-events|wiki-types|wiki-entities)/.test(pathname);
 

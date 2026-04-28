@@ -29,6 +29,18 @@ export default async function WikiEntityPage({
     }),
     prisma.wikiEntity.findUnique({
       where: { projectSlug_id: { projectSlug: slug, id } },
+      include: {
+        attachments: {
+          orderBy: { position: 'asc' },
+          select: {
+            id: true,
+            title: true,
+            originalFilename: true,
+            mimeType: true,
+            sizeBytes: true,
+          },
+        },
+      },
     }),
   ]);
 
@@ -100,6 +112,63 @@ export default async function WikiEntityPage({
             wikiEntityIds={entityIds}
           />
         </section>
+
+        {entity.attachments.length > 0 && (
+          <section className="mt-8 pt-4 border-t border-border-muted">
+            <div className="text-xs uppercase tracking-wider text-fg-muted font-semibold mb-3">
+              Attachments
+            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 list-none pl-0">
+              {entity.attachments.map(a => {
+                const mime = (a.mimeType ?? '').toLowerCase();
+                const isImage = mime.startsWith('image/');
+                const href = `/api/wiki-entity-attachments/${a.id}`;
+                const inlineable =
+                  isImage ||
+                  mime.startsWith('text/') ||
+                  mime === 'application/pdf' ||
+                  /\.(md|html?|txt|json|csv|tsv|log|pdf|png|jpe?g|gif|webp|svg)$/i.test(
+                    a.originalFilename ?? '',
+                  );
+                return (
+                  <li key={a.id}>
+                    {isImage ? (
+                      <a
+                        href={`${href}?inline=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-canvas-subtle rounded-md p-2 hover:bg-canvas-default"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`${href}?inline=1`}
+                          alt={a.title}
+                          className="w-full h-32 object-contain rounded"
+                        />
+                        <div className="text-xs text-fg-muted mt-1 truncate">{a.title}</div>
+                      </a>
+                    ) : (
+                      <a
+                        href={inlineable ? `${href}?inline=1` : href}
+                        target={inlineable ? '_blank' : undefined}
+                        rel={inlineable ? 'noopener noreferrer' : undefined}
+                        className="flex items-center gap-2 bg-canvas-subtle rounded-md p-3 hover:bg-canvas-default"
+                      >
+                        <span className="text-xl">📎</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{a.title}</div>
+                          <div className="text-xs text-fg-muted truncate">
+                            {a.originalFilename ?? a.mimeType}
+                          </div>
+                        </div>
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         {sourceFiles.length > 0 && (
           <section className="text-xs text-fg-muted mt-10 pt-4 border-t border-border-muted">

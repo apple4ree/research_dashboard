@@ -231,6 +231,25 @@ Status-code handling:
   and fetch. Treat as new entity, fall through to the "new entity" path.
 - **5xx / network** — skip the file, continue.
 
+#### Attach figures referenced by the progress note (optional)
+
+If the snippet that updated the entity references a local image / PDF
+beside the progress file (e.g. `![curve](./figures/distrib.png)`),
+upload each referenced file to the entity right after the upsert:
+
+\`\`\`bash
+curl -fsS -X POST "$LABHUB_URL/api/projects/<SLUG>/wiki-entities/<entityId>/attachments" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/absolute/path/to/figure.png" \
+  -F "title=Distribution at iter 25"
+\`\`\`
+
+- 100MB cap per file. Skip and note files exceeding that.
+- The wiki entity page renders images as inline thumbnails and other
+  attachments as small chips.
+- Resolve paths relative to the progress file's directory; don't fetch
+  remote URLs.
+
 ## Step 4 — Summary report
 
 ```
