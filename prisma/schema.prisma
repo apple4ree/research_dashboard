@@ -29,6 +29,7 @@ model Member {
   triggeredRuns       ExperimentRun[]
   authoredDiscussions Discussion[]
   authoredReplies     Reply[]
+  authoredNotices     Notice[]
   authoredEvents      ActivityEvent[]
   journalEntries      ResearchEntry[]
 
@@ -222,6 +223,23 @@ model Reply {
 
   discussion Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
   author     Member     @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+}
+
+// Site-wide announcements / changelog. Lighter than Discussion (no replies)
+// and not project-scoped — they appear in TopNav so every member sees them.
+model Notice {
+  id           String   @id @default(cuid())
+  title        String
+  bodyMarkdown String
+  category     String   @default("update") // 'update' | 'feature' | 'fix' | 'announcement'
+  authorLogin  String
+  pinned       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  author Member @relation(fields: [authorLogin], references: [login], onDelete: Restrict)
+
+  @@index([pinned, createdAt])
 }
 
 // ========== Releases ==========

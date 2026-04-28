@@ -41,6 +41,33 @@ export const DISCUSSION_CATEGORY_TONE: Record<DiscussionCategory, 'neutral' | 'a
 
 export const DISCUSSION_CATEGORY_ORDER: DiscussionCategory[] = ['announcements', 'journal_club', 'qa', 'ideas'];
 
+// ========== Notices (site-wide changelog / announcements) ==========
+
+export type NoticeCategory = 'update' | 'feature' | 'fix' | 'announcement';
+
+export const NOTICE_CATEGORY_LABELS: Record<NoticeCategory, string> = {
+  update: '업데이트',
+  feature: '새 기능',
+  fix: '수정',
+  announcement: '공지',
+};
+
+export const NOTICE_CATEGORY_ICONS: Record<NoticeCategory, string> = {
+  update: '🔄',
+  feature: '✨',
+  fix: '🛠',
+  announcement: '📣',
+};
+
+export const NOTICE_CATEGORY_TONE: Record<NoticeCategory, 'neutral' | 'accent' | 'done' | 'attention' | 'success'> = {
+  update: 'neutral',
+  feature: 'success',
+  fix: 'attention',
+  announcement: 'accent',
+};
+
+export const NOTICE_CATEGORY_ORDER: NoticeCategory[] = ['announcement', 'feature', 'update', 'fix'];
+
 // ========== Research Journal ==========
 
 export const ENTRY_TYPE_LABELS: Record<EntryType, string> = {

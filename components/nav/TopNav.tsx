@@ -17,6 +17,7 @@ export function TopNav() {
           <Link href="/experiments" className="hover:opacity-80">Experiments</Link>
           <Link href="/pipeline"    className="hover:opacity-80">Pipeline</Link>
           <Link href="/discussions" className="hover:opacity-80">Discussions</Link>
+          <Link href="/notices"     className="hover:opacity-80">Notices</Link>
         </nav>
         <div className="flex-1" />
         <CreateMenu />
