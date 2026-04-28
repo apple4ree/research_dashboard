@@ -41,6 +41,10 @@ export default function middleware(req: NextRequest) {
     pathname.startsWith('/api/wiki-entities') ||
     pathname.startsWith('/api/wiki-entity-attachments') ||
     pathname.startsWith('/api/wiki-types') ||
+    pathname.startsWith('/api/experiments') ||
+    pathname.startsWith('/api/experiment-results') ||
+    /^\/api\/projects\/[^/]+\/experiments$/.test(pathname) ||
+    /^\/api\/projects\/[^/]+\/results$/.test(pathname) ||
     /^\/api\/projects\/[^/]+\/(entries|milestones|todos|flow-events|wiki-types|wiki-entities)/.test(pathname);
 
   if (isAuthRoute || isAuthApi || isBearerApi) return NextResponse.next();

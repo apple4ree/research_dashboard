@@ -41,6 +41,9 @@ Pick exactly one based on what the user said:
 | "그 entry 수정", "entry 슬라이드 추가", "edit entry" | `entry.update` |
 | "그 entry 삭제", "delete entry" | `entry.delete` |
 | "entries 목록", "지난 회의록 보여줘", "list entries" | `entry.list` |
+| "experiment 만들어", "ablation 실험 묶음 만들어", "X 실험 시작 (큰 단위)" | `experiment.create` |
+| "그 experiment에 결과 추가", "metric 0.305 등록", "checkpoint 첨부" | `result.create` (또는 `result.attach`) |
+| "experiment 수정 / 삭제 / 목록" | `experiment.update` / `experiment.delete` / `experiment.list` |
 | "milestone 추가", "마일스톤 추가" | `milestone.create` |
 | "milestone 수정/삭제/보여줘" | `milestone.update` / `milestone.delete` / `milestone.list` |
 | "todo 추가" | `todo.create` |
@@ -236,6 +239,68 @@ When this endpoint is available, do **not** tell the user "PDF는 못
 넣는다" — attach the file and report success:
 ```
 ✓ Attached <originalFilename> (<sizeBytes>) → /api/uploads/<artifactId>
+```
+
+### `experiment.create` (한 실험 묶음 생성)
+
+Use when the user wants a NEW experiment grouping (e.g. "v4 ablation
+실험 묶음", "trigger universal 실험 시작") — distinct from a single run.
+Don't confuse with `run.start`: run is a single execution, experiment is
+the larger unit that groups runs + results + plan.
+
+```bash
+TOKEN=$(jq -r .token "$HOME/.config/labhub/token.json")
+curl -fsS -X POST "$LABHUB_URL/api/experiments" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"projectSlug":"<SLUG>","title":"trigger ablation v4","status":"planned",
+       "hypothesis":"...","bodyMarkdown":"...설정·변수·계획..."}'
+```
+
+Status: `planned | running | completed | archived` (default `planned`).
+Response 201 → `{ ok, id, title, status }`. Print:
+```
+✓ Experiment created: <id> ("<title>")
+  $LABHUB_URL/projects/<SLUG>/experiments/<id>
+```
+
+### `result.create` (실험 결과 등록)
+
+For posting a quantitative result (with metrics, optionally with summary)
+to an existing experiment.
+
+```bash
+curl -fsS -X POST "$LABHUB_URL/api/experiments/<expId>/results" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"title":"v4 fresh @ iter25 — trigger×MELON 0.305",
+       "summary":"...optional markdown...",
+       "kind":"benchmark",
+       "metrics":[{"label":"trigger×MELON","value":"0.305"},
+                  {"label":"steps","value":"25"}]}'
+```
+
+`kind` ∈ `benchmark | checkpoint | figure-bundle | report | tool` (default `benchmark`).
+Response 201 → `{ ok, id, title, kind }`.
+
+### `result.attach` (결과에 파일 첨부 — 그림, checkpoint, csv 등)
+
+```bash
+curl -fsS -X POST "$LABHUB_URL/api/experiment-results/<resultId>/attachments" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/abs/path/figure.png" -F "title=reward curve"
+```
+
+100MB cap. Use this right after `result.create` when the user mentions a
+local file alongside the metrics.
+
+### `experiment.update` / `experiment.delete`
+
+```bash
+curl -fsS -X PATCH "$LABHUB_URL/api/experiments/<expId>" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"status":"completed"}'
+
+curl -fsS -X DELETE "$LABHUB_URL/api/experiments/<expId>" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### `entry.update`
