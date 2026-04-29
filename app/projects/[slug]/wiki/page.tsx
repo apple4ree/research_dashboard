@@ -10,10 +10,10 @@ import { WikiSearchBox } from '@/components/wiki/WikiSearchBox';
 import { statusTone } from '@/lib/wiki-status';
 import { getCurrentUserLogin } from '@/lib/session';
 
-// "New!" badge fades linearly over 72h from lastSyncedAt → returns 0..1.
+// "New!" badge fades linearly over 72h from the entity's createdAt
+// (first ingest). Future-skewed timestamps are clamped to "just now".
 function newnessFromDate(d: Date): number {
-  const hours = (Date.now() - d.getTime()) / (60 * 60 * 1000);
-  if (hours < 0) return 1;
+  const hours = Math.max(0, (Date.now() - d.getTime()) / (60 * 60 * 1000));
   if (hours >= 72) return 0;
   return 1 - hours / 72;
 }
@@ -52,6 +52,7 @@ type Entity = {
   status: string;
   summaryMarkdown: string;
   bodyMarkdown: string;
+  createdAt: Date;
   lastSyncedAt: Date;
 };
 
@@ -122,7 +123,7 @@ export default async function ProjectWikiIndex({
   }, null);
 
   const renderCard = (e: Entity, opts: { showSearchSnippet?: boolean } = {}) => {
-    const newness = newnessFromDate(e.lastSyncedAt);
+    const newness = newnessFromDate(e.createdAt);
     const isStarred = starredIds.has(e.id);
     const matchSnippet = opts.showSearchSnippet && query
       ? searchSnippet(e.bodyMarkdown, query) ?? searchSnippet(e.summaryMarkdown, query)

@@ -476,6 +476,10 @@ model WikiEntity {
   summaryMarkdown String   @default("")
   bodyMarkdown    String
   sourceFiles     String   @default("[]") // JSON array of relative paths under Project.localPath
+  // First-time-ingested timestamp. The "New!" badge fades from this.
+  // lastSyncedAt below is bumped on every re-ingest, so reusing it for
+  // freshness made the badge sticky on entities that get re-synced often.
+  createdAt       DateTime @default(now())
   lastSyncedAt    DateTime
   source          String   @default("wiki-llm")
 

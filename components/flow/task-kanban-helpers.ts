@@ -32,12 +32,22 @@ export type EventComment = {
 };
 
 // "New!" 배지 fade 윈도우: 0h = 1.0 (방금 = 풀 색상), 72h = 0 (사라짐).
-// 그 사이는 선형 보간. event date 가 'YYYY-MM-DD HH:mm' (KST local) 형식이라
-// 'T' 로 교체해서 Date 로 파싱.
+// 그 사이는 선형 보간.
+//
+// FlowEvent.date 는 'YYYY-MM-DD HH:mm' (KST 벽시계) 형식 — timezone suffix
+// 가 없어서 Node가 server local time(UTC)로 파싱하면 KST 22:45 → UTC 22:45
+// 로 해석돼 9시간 미래로 보이는 버그가 있었음. 명시적으로 +09:00 을 붙여
+// 항상 KST 로 해석.
 const NEW_FADE_HOURS = 72;
+const KST_OFFSET = '+09:00';
 
 function ageHoursFromString(eventDate: string): number {
-  const d = new Date(eventDate.replace(' ', 'T'));
+  // Already has timezone? (e.g. ISO with Z or +HH:MM) — use as-is.
+  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(eventDate);
+  const normalized = hasTz
+    ? eventDate.replace(' ', 'T')
+    : eventDate.replace(' ', 'T') + KST_OFFSET;
+  const d = new Date(normalized);
   if (isNaN(d.getTime())) return Infinity;
   return (Date.now() - d.getTime()) / (60 * 60 * 1000);
 }
@@ -46,18 +56,20 @@ function ageHoursFromDate(d: Date): number {
   return (Date.now() - d.getTime()) / (60 * 60 * 1000);
 }
 
-/** 0 (oldest, hide) ~ 1 (just now). Linear over NEW_FADE_HOURS. */
+/**
+ * 0 (oldest, hide) ~ 1 (just now). Linear over NEW_FADE_HOURS.
+ * Future-dated inputs (clock skew, ahead-of-server timestamp) are clamped
+ * to "just now" so the badge fades naturally instead of sticking forever.
+ */
 export function newnessFromString(eventDate: string): number {
-  const h = ageHoursFromString(eventDate);
-  if (h < 0) return 1;
+  const h = Math.max(0, ageHoursFromString(eventDate));
   if (h >= NEW_FADE_HOURS) return 0;
   return 1 - h / NEW_FADE_HOURS;
 }
 
-/** Same but for Date objects (e.g. WikiEntity.lastSyncedAt). */
+/** Same but for Date objects. */
 export function newnessFromDate(d: Date): number {
-  const h = ageHoursFromDate(d);
-  if (h < 0) return 1;
+  const h = Math.max(0, ageHoursFromDate(d));
   if (h >= NEW_FADE_HOURS) return 0;
   return 1 - h / NEW_FADE_HOURS;
 }
