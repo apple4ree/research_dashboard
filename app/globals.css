@@ -12,3 +12,21 @@ body {
   font-size: 14px;
   line-height: 20px;
 }
+
+/* Chatbot bubble: tighten prose spacing inside the right-sidebar chat. */
+.chatbot-md > :first-child { margin-top: 0; }
+.chatbot-md > :last-child { margin-bottom: 0; }
+.chatbot-md p { margin: 0.35em 0; }
+.chatbot-md ul, .chatbot-md ol { margin: 0.35em 0; padding-left: 1.25em; }
+.chatbot-md li { margin: 0.1em 0; }
+.chatbot-md h1, .chatbot-md h2, .chatbot-md h3, .chatbot-md h4 {
+  margin: 0.6em 0 0.3em;
+  line-height: 1.25;
+}
+.chatbot-md h1 { font-size: 1.05em; }
+.chatbot-md h2 { font-size: 1.0em; }
+.chatbot-md h3 { font-size: 0.95em; }
+.chatbot-md pre { margin: 0.4em 0; padding: 0.5em 0.6em; font-size: 12px; }
+.chatbot-md code { font-size: 0.9em; }
+.chatbot-md table { font-size: 0.9em; }
+.chatbot-md blockquote { margin: 0.4em 0; padding-left: 0.7em; }

@@ -1,0 +1,12 @@
+model_list:
+  - model_name: chatbot
+    litellm_params:
+      model: os.environ/CHATBOT_MODEL
+      api_key: os.environ/CHATBOT_KEY
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

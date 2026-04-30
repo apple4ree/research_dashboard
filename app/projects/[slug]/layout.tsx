@@ -1,5 +1,6 @@
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { TabBar } from '@/components/project/TabBar';
+import { ProjectChatbot } from '@/components/project/ProjectChatbot';
 import { loadProject } from '@/lib/mock/loaders';
 import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
@@ -43,7 +44,12 @@ export default async function ProjectLayout({
         isPinned={isPinned}
       />
       <TabBar slug={slug} />
-      {children}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
+        <div className="min-w-0">{children}</div>
+        <aside className="hidden xl:block sticky top-4 self-start">
+          <ProjectChatbot slug={slug} />
+        </aside>
+      </div>
     </div>
   );
 }
