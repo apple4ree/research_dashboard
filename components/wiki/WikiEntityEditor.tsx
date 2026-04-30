@@ -7,6 +7,7 @@ import { MarkdownBody } from '@/components/md/MarkdownBody';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { statusTone } from '@/lib/wiki-status';
 import {
+  createWikiEntityAction,
   updateWikiEntityAction,
   deleteWikiEntityAction,
 } from '@/lib/actions/wiki';
@@ -18,6 +19,7 @@ export function WikiEntityEditor({
   entity,
   types,
   entityIds,
+  mode = 'edit',
 }: {
   slug: string;
   entity: {
@@ -30,26 +32,48 @@ export function WikiEntityEditor({
   };
   types: WikiType[];
   entityIds: string[];
+  mode?: 'edit' | 'create';
 }) {
+  const [id, setId] = useState(entity.id);
   const [name, setName] = useState(entity.name);
-  const [type, setType] = useState(entity.type);
-  const [status, setStatus] = useState(entity.status);
+  const [type, setType] = useState(entity.type || types[0]?.key || '');
+  const [status, setStatus] = useState(entity.status || 'active');
   const [summary, setSummary] = useState(entity.summaryMarkdown);
   const [body, setBody] = useState(entity.bodyMarkdown);
 
-  const detailHref = `/projects/${slug}/wiki/${encodeURIComponent(entity.id)}`;
+  const isCreate = mode === 'create';
+  const detailHref = isCreate
+    ? `/projects/${slug}/wiki`
+    : `/projects/${slug}/wiki/${encodeURIComponent(entity.id)}`;
   const indexHref = `/projects/${slug}/wiki`;
+  const action = isCreate ? createWikiEntityAction : updateWikiEntityAction;
 
   return (
     <form
-      action={updateWikiEntityAction}
+      action={action}
       className="grid grid-cols-1 lg:grid-cols-2 gap-6"
     >
       <input type="hidden" name="projectSlug" value={slug} />
-      <input type="hidden" name="id" value={entity.id} />
-      <input type="hidden" name="redirectTo" value={detailHref} />
+      {!isCreate && <input type="hidden" name="id" value={entity.id} />}
+      {!isCreate && <input type="hidden" name="redirectTo" value={detailHref} />}
 
       <div className="space-y-4">
+        {isCreate && (
+          <div>
+            <label className="block text-[11px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
+              ID <span className="text-fg-muted normal-case font-normal">(영소문자/숫자/<code>_</code>/<code>-</code>, 예: <code>my_concept</code>)</span>
+            </label>
+            <input
+              name="id"
+              value={id}
+              onChange={e => setId(e.target.value)}
+              required
+              pattern="[a-z0-9_-]+"
+              placeholder="slug-style-id"
+              className="w-full bg-white border border-border-default rounded px-3 py-2 text-sm font-mono"
+            />
+          </div>
+        )}
         <div>
           <label className="block text-[11px] uppercase tracking-wider text-fg-muted font-semibold mb-1">
             Name
@@ -125,10 +149,10 @@ export function WikiEntityEditor({
         </div>
 
         <div className="flex items-center gap-2 pt-2 border-t border-border-muted">
-          <DeleteEntityButton slug={slug} id={entity.id} redirectTo={indexHref} />
+          {!isCreate && <DeleteEntityButton slug={slug} id={entity.id} redirectTo={indexHref} />}
           <div className="flex-1" />
           <Link
-            href={detailHref}
+            href={isCreate ? indexHref : detailHref}
             className="px-3 py-1.5 text-sm border border-border-default rounded hover:bg-canvas-subtle"
           >
             취소
@@ -137,7 +161,7 @@ export function WikiEntityEditor({
             type="submit"
             className="px-3 py-1.5 text-sm bg-accent-fg text-white rounded hover:opacity-90"
           >
-            저장
+            {isCreate ? '생성' : '저장'}
           </button>
         </div>
       </div>

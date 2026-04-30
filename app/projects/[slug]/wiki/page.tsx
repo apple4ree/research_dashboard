@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { PencilIcon, StarFillIcon } from '@primer/octicons-react';
+import { PencilIcon, PlusIcon, StarFillIcon } from '@primer/octicons-react';
 import { prisma } from '@/lib/db';
 import { LabelChip } from '@/components/badges/LabelChip';
 import { WikiEntityDeleteButton } from '@/components/wiki/WikiEntityDeleteButton';
@@ -217,12 +217,20 @@ export default async function ProjectWikiIndex({
   return (
     <div className="max-w-5xl mx-auto py-2 space-y-10">
       <header className="space-y-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Wiki</h2>
-          <p className="text-sm text-fg-muted mt-1">
-            {entities.length} entities · {types.length} types
-            {lastSync && ` · last synced ${lastSync.toLocaleString('ko-KR')}`}
-          </p>
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <h2 className="text-2xl font-semibold tracking-tight">Wiki</h2>
+            <p className="text-sm text-fg-muted mt-1">
+              {entities.length} entities · {types.length} types
+              {lastSync && ` · last synced ${lastSync.toLocaleString('ko-KR')}`}
+            </p>
+          </div>
+          <Link
+            href={`/projects/${slug}/wiki/new`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-accent-fg text-white rounded hover:opacity-90 shrink-0"
+          >
+            <PlusIcon size={14} /> New entry
+          </Link>
         </div>
         <WikiSearchBox slug={slug} defaultQuery="" />
       </header>

@@ -38,10 +38,65 @@ export async function toggleWikiEntityStarAction(
 }
 
 const ALLOWED_STATUSES = new Set(['active', 'deprecated', 'superseded']);
+const ID_RE = /^[a-z0-9_-]+$/;
 
 function s(fd: FormData, key: string): string {
   const v = fd.get(key);
   return typeof v === 'string' ? v : '';
+}
+
+export async function createWikiEntityAction(fd: FormData) {
+  const slug = s(fd, 'projectSlug');
+  const id = s(fd, 'id').trim();
+  const name = s(fd, 'name').trim();
+  const type = s(fd, 'type').trim();
+  const status = s(fd, 'status').trim() || 'active';
+  const summaryMarkdown = s(fd, 'summaryMarkdown');
+  const bodyMarkdown = s(fd, 'bodyMarkdown');
+
+  if (!slug || !id || !name || !type) return;
+  if (!ID_RE.test(id)) return;
+  if (!ALLOWED_STATUSES.has(status)) return;
+
+  const validTypes = await prisma.wikiType.findMany({
+    where: { projectSlug: slug },
+    select: { key: true },
+  });
+  if (!validTypes.map(t => t.key).includes(type)) return;
+
+  const existing = await prisma.wikiEntity.findUnique({
+    where: { projectSlug_id: { projectSlug: slug, id } },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  await prisma.wikiEntity.create({
+    data: {
+      projectSlug: slug,
+      id,
+      type,
+      name,
+      status,
+      summaryMarkdown,
+      bodyMarkdown,
+      sourceFiles: '[]',
+      lastSyncedAt: new Date(),
+      source: 'wiki-manual',
+    },
+  });
+
+  const actor = await getCurrentUserLogin();
+  if (actor) {
+    await logActivity({
+      type: 'wiki_entity',
+      actorLogin: actor,
+      projectSlug: slug,
+      payload: { entityId: id, action: 'created' },
+    });
+  }
+
+  revalidatePath(`/projects/${slug}/wiki`);
+  redirect(`/projects/${slug}/wiki/${encodeURIComponent(id)}`);
 }
 
 export async function updateWikiEntityAction(fd: FormData) {
