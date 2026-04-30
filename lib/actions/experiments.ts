@@ -98,7 +98,7 @@ export async function deleteExperimentAction(projectSlug: string, id: string): P
   }
   await prisma.experiment.delete({ where: { id } });
   revalidatePath(`/projects/${projectSlug}/experiments`);
-  revalidatePath(`/projects/${projectSlug}/data`);
+  revalidatePath(`/projects/${projectSlug}/results`);
   redirect(`/projects/${projectSlug}/experiments`);
 }
 
@@ -177,7 +177,7 @@ export async function createResultAction(
   });
 
   revalidatePath(`/projects/${projectSlug}/experiments/${experimentId}`);
-  revalidatePath(`/projects/${projectSlug}/data`);
+  revalidatePath(`/projects/${projectSlug}/results`);
   redirect(`/projects/${projectSlug}/experiments/${experimentId}`);
 }
 
@@ -223,7 +223,7 @@ export async function updateResultAction(
   });
 
   revalidatePath(`/projects/${projectSlug}/experiments/${existing.experimentId}`);
-  revalidatePath(`/projects/${projectSlug}/data`);
+  revalidatePath(`/projects/${projectSlug}/results`);
   redirect(`/projects/${projectSlug}/experiments/${existing.experimentId}`);
 }
 
@@ -238,7 +238,7 @@ export async function deleteResultAction(projectSlug: string, resultId: string):
   }
   await prisma.experimentResult.delete({ where: { id: resultId } });
   revalidatePath(`/projects/${projectSlug}/experiments/${r.experimentId}`);
-  revalidatePath(`/projects/${projectSlug}/data`);
+  revalidatePath(`/projects/${projectSlug}/results`);
 }
 
 // ---- Attaching a file to a Result (UI form-action) ----

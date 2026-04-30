@@ -137,7 +137,7 @@ export async function syncProjectFromGitHubAction(
     }
 
     revalidatePath(`/projects/${slug}`);
-    revalidatePath(`/projects/${slug}/data`);
+    revalidatePath(`/projects/${slug}/results`);
     revalidatePath(`/projects/${slug}/edit`);
     return {
       ok: true,

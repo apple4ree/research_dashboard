@@ -67,6 +67,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
   }
   await prisma.experiment.delete({ where: { id } });
   revalidatePath(`/projects/${existing.projectSlug}/experiments`);
-  revalidatePath(`/projects/${existing.projectSlug}/data`);
+  revalidatePath(`/projects/${existing.projectSlug}/results`);
   return new NextResponse(null, { status: 204 });
 }

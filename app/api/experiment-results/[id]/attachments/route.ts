@@ -66,7 +66,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     });
 
     revalidatePath(`/projects/${result.experiment.projectSlug}/experiments/${result.experiment.id}`);
-    revalidatePath(`/projects/${result.experiment.projectSlug}/data`);
+    revalidatePath(`/projects/${result.experiment.projectSlug}/results`);
 
     return NextResponse.json(
       {

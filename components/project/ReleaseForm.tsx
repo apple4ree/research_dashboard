@@ -64,10 +64,10 @@ export function ReleaseForm(
       {!inPanel && (
         <>
           <Link
-            href={`/projects/${projectSlug}/data`}
+            href={`/projects/${projectSlug}/results`}
             className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
           >
-            <ArrowLeftIcon size={14} /> Back to data
+            <ArrowLeftIcon size={14} /> Back to results
           </Link>
           <h1 className="text-lg font-semibold mb-4">
             {mode === 'create' ? 'New release' : 'Edit release'}
@@ -201,7 +201,7 @@ export function ReleaseForm(
             </button>
           ) : (
             <Link
-              href={`/projects/${projectSlug}/data`}
+              href={`/projects/${projectSlug}/results`}
               className="px-3 h-8 inline-flex items-center rounded-md border border-border-default text-sm hover:bg-canvas-subtle"
             >
               Cancel

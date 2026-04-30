@@ -57,12 +57,12 @@ export async function createReleaseAction(
     payload: { releaseId: id, action: 'published' },
   });
 
-  revalidatePath(`/projects/${projectSlug}/data`);
+  revalidatePath(`/projects/${projectSlug}/results`);
   revalidatePath(`/projects/${projectSlug}`);
   revalidatePath('/');
   const noRedirect = String(formData.get('__noRedirect') ?? '') === '1';
   if (noRedirect) return { ok: true };
-  redirect(`/projects/${projectSlug}/data`);
+  redirect(`/projects/${projectSlug}/results`);
 }
 
 export async function updateReleaseAction(
@@ -100,12 +100,12 @@ export async function updateReleaseAction(
     },
   });
 
-  revalidatePath(`/projects/${existing.projectSlug}/data`);
+  revalidatePath(`/projects/${existing.projectSlug}/results`);
   revalidatePath(`/projects/${existing.projectSlug}`);
   revalidatePath('/');
   const noRedirect = String(formData.get('__noRedirect') ?? '') === '1';
   if (noRedirect) return { ok: true };
-  redirect(`/projects/${existing.projectSlug}/data`);
+  redirect(`/projects/${existing.projectSlug}/results`);
 }
 
 export async function deleteReleaseAction(releaseId: string): Promise<void> {
@@ -115,7 +115,7 @@ export async function deleteReleaseAction(releaseId: string): Promise<void> {
   // disconnecting the project from the GitHub repo.
   if (existing.source === 'github') return;
   await prisma.release.delete({ where: { id: releaseId } });
-  revalidatePath(`/projects/${existing.projectSlug}/data`);
+  revalidatePath(`/projects/${existing.projectSlug}/results`);
   revalidatePath(`/projects/${existing.projectSlug}`);
   revalidatePath('/');
 }

@@ -8,6 +8,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '100mb',
     },
   },
+  async redirects() {
+    return [
+      {
+        source: '/projects/:slug/data',
+        destination: '/projects/:slug/results',
+        permanent: true,
+      },
+      {
+        source: '/projects/:slug/data/:path*',
+        destination: '/projects/:slug/results/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

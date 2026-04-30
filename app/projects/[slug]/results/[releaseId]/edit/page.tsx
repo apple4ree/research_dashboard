@@ -20,7 +20,7 @@ export default async function EditReleasePage({
     return (
       <div className="max-w-2xl">
         <Link
-          href={`/projects/${slug}/data`}
+          href={`/projects/${slug}/results`}
           className="inline-flex items-center gap-1 text-sm text-accent-fg hover:underline mb-4"
         >
           <ArrowLeftIcon size={14} /> Back to releases

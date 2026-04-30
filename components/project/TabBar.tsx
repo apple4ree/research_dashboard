@@ -11,7 +11,7 @@ const TABS = [
   { key: 'flow',        label: 'Flow',        Icon: GitMergeIcon,           href: '/flow' },
   { key: 'experiments', label: 'Experiments', Icon: PlayIcon,               href: '/experiments' },
   { key: 'papers',      label: 'Papers',      Icon: FileIcon,               href: '/papers' },
-  { key: 'data',        label: 'Results',     Icon: DatabaseIcon,           href: '/data' },
+  { key: 'results',     label: 'Results',     Icon: DatabaseIcon,           href: '/results' },
   { key: 'discussions', label: 'Discussions', Icon: CommentDiscussionIcon,  href: '/discussions' },
   { key: 'members',     label: 'Members',     Icon: PeopleIcon,             href: '/members' },
 ] as const;

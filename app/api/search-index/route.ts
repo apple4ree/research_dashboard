@@ -70,7 +70,7 @@ export async function GET() {
       type: 'release' as const,
       title: r.name,
       subtitle: `${r.kind} · ${r.version} · ${r.projectSlug}`,
-      href: `/projects/${r.projectSlug}/data`,
+      href: `/projects/${r.projectSlug}/results`,
       keywords: [r.name, r.kind, r.version, r.description ?? ''].join(' '),
     })),
     ...entries.map((e) => ({

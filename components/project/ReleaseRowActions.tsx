@@ -54,7 +54,7 @@ export function ReleaseRowActions({
         </button>
       ) : (
         <Link
-          href={`/projects/${projectSlug}/data/${releaseId}/edit`}
+          href={`/projects/${projectSlug}/results/${releaseId}/edit`}
           aria-label="Edit release"
           className={editClass}
         >

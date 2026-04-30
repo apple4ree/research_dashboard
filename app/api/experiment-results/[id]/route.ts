@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   await prisma.experimentResult.update({ where: { id }, data });
   revalidatePath(`/projects/${existing.experiment.projectSlug}/experiments/${existing.experiment.id}`);
-  revalidatePath(`/projects/${existing.experiment.projectSlug}/data`);
+  revalidatePath(`/projects/${existing.experiment.projectSlug}/results`);
   return NextResponse.json({ ok: true, id });
 }
 
@@ -77,6 +77,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
   }
   await prisma.experimentResult.delete({ where: { id } });
   revalidatePath(`/projects/${existing.experiment.projectSlug}/experiments/${existing.experiment.id}`);
-  revalidatePath(`/projects/${existing.experiment.projectSlug}/data`);
+  revalidatePath(`/projects/${existing.experiment.projectSlug}/results`);
   return new NextResponse(null, { status: 204 });
 }
