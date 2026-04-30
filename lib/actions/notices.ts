@@ -4,6 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getCurrentUserLogin } from '@/lib/session';
+import {
+  postNoticeCreated,
+  postNoticeUpdated,
+  postNoticeDeleted,
+  postNoticeComment,
+} from '@/lib/slack';
 
 export type NoticeActionState = { error?: string } | null;
 
@@ -16,6 +22,14 @@ function s(fd: FormData, key: string): string {
 
 function parseCategory(raw: string): string {
   return ALLOWED_CATEGORIES.has(raw) ? raw : 'update';
+}
+
+async function safeSlack(label: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    console.error(`[notices] Slack ${label} failed`, err);
+  }
 }
 
 export async function createNoticeAction(
@@ -37,6 +51,16 @@ export async function createNoticeAction(
     data: { title, bodyMarkdown, category, pinned, authorLogin },
     select: { id: true },
   });
+
+  await safeSlack('create', () =>
+    postNoticeCreated({
+      title,
+      category,
+      authorLogin,
+      noticeId: notice.id,
+      bodyMarkdown,
+    }),
+  );
 
   revalidatePath('/notices');
   revalidatePath('/');
@@ -64,6 +88,18 @@ export async function updateNoticeAction(
     data: { title, bodyMarkdown, category, pinned },
   });
 
+  const editorLogin = (await getCurrentUserLogin()) ?? existing.authorLogin;
+  await safeSlack('update', () =>
+    postNoticeUpdated({
+      title,
+      category,
+      editorLogin,
+      noticeId: id,
+      titleChanged: existing.title !== title,
+      previousTitle: existing.title,
+    }),
+  );
+
   revalidatePath('/notices');
   revalidatePath(`/notices/${id}`);
   revalidatePath('/');
@@ -71,7 +107,25 @@ export async function updateNoticeAction(
 }
 
 export async function deleteNoticeAction(id: string): Promise<void> {
+  const existing = await prisma.notice.findUnique({
+    where: { id },
+    select: { id: true, title: true, category: true },
+  });
+
   await prisma.notice.delete({ where: { id } });
+
+  if (existing) {
+    const deleterLogin = (await getCurrentUserLogin()) ?? 'unknown';
+    await safeSlack('delete', () =>
+      postNoticeDeleted({
+        title: existing.title,
+        category: existing.category,
+        noticeId: existing.id,
+        deleterLogin,
+      }),
+    );
+  }
+
   revalidatePath('/notices');
   revalidatePath('/');
   redirect('/notices');
@@ -84,12 +138,24 @@ export async function addNoticeCommentAction(noticeId: string, formData: FormDat
   const authorLogin = await getCurrentUserLogin();
   if (!authorLogin) return;
 
-  const notice = await prisma.notice.findUnique({ where: { id: noticeId }, select: { id: true } });
+  const notice = await prisma.notice.findUnique({
+    where: { id: noticeId },
+    select: { id: true, title: true },
+  });
   if (!notice) return;
 
   await prisma.noticeComment.create({
     data: { noticeId, authorLogin, bodyMarkdown: body },
   });
+
+  await safeSlack('comment', () =>
+    postNoticeComment({
+      noticeId: notice.id,
+      noticeTitle: notice.title,
+      commenterLogin: authorLogin,
+      bodyMarkdown: body,
+    }),
+  );
 
   revalidatePath(`/notices/${noticeId}`);
   revalidatePath('/notices');
