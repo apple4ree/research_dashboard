@@ -1,0 +1,8 @@
+{
+  "name": "labhub",
+  "description": "Log experiment runs to LabHub from chat. Wraps the LabHub REST API; authenticates via GitHub Device Flow.",
+  "version": "0.10.2",
+  "author": {
+    "name": "damilab"
+  }
+}

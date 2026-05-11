@@ -1,0 +1,8 @@
+{
+  "name": "labhub-flow-ingest",
+  "description": "Mirror a research project's progress files into LabHub Flow J view (FlowEvents + task links). Walks <localPath>/progress/<researcher>/progress_*.md, runs LLM extraction, persists rows.",
+  "version": "0.10.2",
+  "author": {
+    "name": "damilab"
+  }
+}
